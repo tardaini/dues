@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LIC Advanced Policy Fee Calculator & Auto-Importer Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS for Excel Parsing & Generation -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- PDF.js for parsing LIC Premium Due List PDFs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    <!-- jsPDF library for client-side PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        @media print {
+            body { background: white !important; }
+            header, footer, nav, .no-print { display: none !important; }
+            body * { visibility: hidden; }
+            #resultSection, #resultSection *, #individualPrintModal, #individualPrintModal * { visibility: visible; }
+            #resultSection { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white !important; border: none !important; box-shadow: none !important; }
+            #individualPrintModal { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; display: block !important; background: white !important; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 to-blue-50 min-h-screen flex flex-col justify-between font-sans text-slate-800">
+
+    <header class="bg-blue-900 text-white shadow-lg no-print">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-500 text-blue-950 font-black px-3.5 py-1.5 rounded-lg text-lg tracking-wider shadow">LIC</div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-wide">LIC Portal & Auto-Importer</h1>
+                    <p class="text-xs text-blue-200">Interactive Policy Fee Manager & Due Importer</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importExcelFile(event)">
+                <input type="file" id="pdfFileInput" accept=".pdf" class="hidden" onchange="importPdfFile(event)">
+
+                <button onclick="backupDatabase()" class="bg-blue-800 hover:bg-blue-700 text-blue-200 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-700 transition" title="Backup Database">Backup</button>
+                <label class="bg-blue-800 hover:bg-blue-700 text-blue-200 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-700 transition cursor-pointer" title="Restore Database">
+                    Restore <input type="file" id="restoreFileInput" accept=".json" class="hidden" onchange="restoreDatabase(event)">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <nav class="max-w-5xl w-full mx-auto px-4 mt-6 no-print">
+        <div class="bg-white p-2 rounded-2xl shadow-sm border border-slate-200/80 grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <button onclick="switchTab('autoImporter')" id="navAutoImporter" class="py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition bg-blue-600 text-white shadow">
+                0. Due Auto-Importer
+            </button>
+            <button onclick="switchTab('addPolicy')" id="navAddPolicy" class="py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition text-slate-600 hover:bg-slate-100">
+                1. Add Policy
+            </button>
+            <button onclick="switchTab('checkDues')" id="navCheckDues" class="py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition text-slate-600 hover:bg-slate-100">
+                2. Check Dues
+            </button>
+            <button onclick="switchTab('reportAll')" id="navReportAll" class="py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition text-slate-600 hover:bg-slate-100">
+                3. Report (All)
+            </button>
+            <button onclick="switchTab('calculationHistory')" id="navCalculationHistory" class="col-span-2 sm:col-span-1 py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition text-slate-600 hover:bg-slate-100">
+                4. Dues History
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl w-full mx-auto px-4 py-6 flex-grow">
+        <div class="print-container bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden backdrop-blur-sm">
+            
+            <!-- Tab 0: LIC Premium Due Auto-Importer -->
+            <div id="tabAutoImporter" class="tab-content">
+                <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 py-4 text-white flex justify-between items-center">
+                    <h2 class="font-semibold text-sm tracking-wide uppercase text-blue-100">LIC Premium Due Auto-Importer & System Manager</h2>
+                    <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded">Auto Sync</span>
+                </div>
+                <div class="p-6 sm:p-8 bg-white">
+                    <div class="upload-section mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-wrap gap-4 items-center justify-between">
+                        <div class="flex flex-wrap items-center gap-4">
+                            <input type="file" id="importerPdfFile" accept=".pdf, .png, .jpg, .jpeg" class="text-xs text-slate-600">
+                            <label class="flex items-center space-x-2 text-xs font-bold text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="matchDocDayOpt" class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>Match FUP day with D.o.C day (Month from PDF)[cite: 1]</span>
+                            </label>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="processAutoImporterDocument()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow">Extract & Populate Webpage</button>
+                            <button id="updateDatabaseBtn" onclick="updatePortalDatabaseFromImporter()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow disabled:opacity-50" disabled>Update Database</button>
+                            <button id="downloadExcelBtn" onclick="downloadImporterExcel()" class="bg-sky-700 hover:bg-sky-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow disabled:opacity-50">Download Excel</button>
+                            <button id="downloadPdfBtn" onclick="downloadImporterPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow disabled:opacity-50">Download PDF</button>
+                        </div>
+                    </div>
+
+                    <div id="metaInfo" class="text-xs font-bold text-slate-700 mb-4"></div>
+
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table id="importerResultTable" class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-600 border-b border-slate-200 uppercase tracking-wider">
+                                    <th class="p-3">S.No</th>
+                                    <th class="p-3">Policy No</th>
+                                    <th class="p-3">Name of Assured</th>
+                                    <th class="p-3">D.o.C</th>
+                                    <th class="p-3">Pin/Tm</th>
+                                    <th class="p-3">Mod</th>
+                                    <th class="p-3">FUP</th>
+                                    <th class="p-3">Flg</th>
+                                    <th class="p-3 text-right">Inst. Prem</th>
+                                    <th class="p-3">Due</th>
+                                    <th class="p-3">GST</th>
+                                    <th class="p-3 text-right">Tot. Prem</th>
+                                    <th class="p-3 text-right">Est. Comn</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 1: Add Policy -->
+            <div id="tabAddPolicy" class="tab-content hidden">
+                <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 py-4 text-white flex justify-between items-center">
+                    <h2 class="font-semibold text-sm tracking-wide uppercase text-blue-100" id="formTitleHeading">Add New Policy Record</h2>
+                    <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded" id="formModeBadge">Database Entry</span>
+                </div>
+                <div class="p-6 sm:p-8 bg-white">
+                    <form id="addPolicyForm" class="space-y-4">
+                        <input type="hidden" id="editPolicyIndex" value="">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label for="newPolicyNo" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Policy Number (Policy No)</label>
+                                <input type="text" id="newPolicyNo" required placeholder="e.g. 384920192" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div>
+                                <label for="newHolderName" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Policyholder Name (Name of Assured)</label>
+                                <input type="text" id="newHolderName" required placeholder="e.g. Ramesh Kumar" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div>
+                                <label for="newDobDate" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Date of Birth (DOB)</label>
+                                <input type="text" id="newDobDate" placeholder="YYYY-MM-DD or NA" value="NA" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div>
+                                <label for="newLicPlan" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">LIC Plan (Pin/Tm)</label>
+                                <input type="text" id="newLicPlan" required placeholder="e.g. 914/21" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div>
+                                <label for="newPaymentMode" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Payment Mode (Mod)</label>
+                                <select id="newPaymentMode" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Quarterly">Quarterly</option>
+                                    <option value="Half Yearly">Half Yearly</option>
+                                    <option value="Yearly" selected>Yearly</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="newBasePremium" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Base Premium Amount (Inst. Prem) (₹)</label>
+                                <input type="number" id="newBasePremium" required step="0.01" min="0" placeholder="e.g. 12500" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div>
+                                <label for="newSumAssured" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Sum Assured (₹)</label>
+                                <input type="number" id="newSumAssured" required step="0.01" min="0" placeholder="e.g. 500000" value="0" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div>
+                                <label for="newDocDate" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Date of Commencement (D.o.C.)</label>
+                                <input type="text" id="newDocDate" required placeholder="YYYY-MM-DD" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div>
+                                <label for="newFupDate" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">First Unpaid Premium (FUP)</label>
+                                <input type="text" id="newFupDate" required placeholder="YYYY-MM-DD or MM/YYYY" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div>
+                                <label for="newMobileNo" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Mobile No</label>
+                                <input type="text" id="newMobileNo" value="NA" placeholder="e.g. 9876543210 or NA" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <label for="newEmailId" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">E-mail Id</label>
+                                <input type="text" id="newEmailId" value="NA" placeholder="e.g. email@example.com or NA" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div class="sm:col-span-2">
+                                <label for="newAddress" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Address</label>
+                                <textarea id="newAddress" rows="2" placeholder="Enter full postal address or NA">NA</textarea>
+                            </div>
+
+                            <div class="sm:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">NACH Auto-Debit Status</label>
+                                <div class="flex items-center space-x-6 text-sm">
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="radio" name="newNachStatus" value="active" id="newNachYes" class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-medium text-slate-700">NACH Activated (Check if Dishonoured/Failed)</span>
+                                    </label>
+                                    <label class="flex items-center space-x-2 cursor-pointer">
+                                        <input type="radio" name="newNachStatus" value="inactive" id="newNachNo" checked class="text-blue-600 focus:ring-blue-500">
+                                        <span class="font-medium text-slate-700">Not NACH / Normal Portal Payment</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 flex items-center justify-between border-t border-slate-100 mt-4">
+                            <button type="button" onclick="resetFormToAddNew()" id="cancelEditBtn" class="hidden text-xs text-rose-600 font-semibold hover:underline">Cancel Edit</button>
+                            <p class="text-xs text-slate-400" id="formFooterHint">Duplicate policy numbers are automatically blocked & updated.</p>
+                            <button type="submit" id="savePolicyBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl shadow-md transition text-sm">
+                                Save Policy Record
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tab 2: Check Dues -->
+            <div id="tabCheckDues" class="tab-content hidden">
+                <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 py-4 text-white flex justify-between items-center">
+                    <h2 class="font-semibold text-sm tracking-wide uppercase text-blue-100">Check Dues</h2>
+                    <div class="flex items-center space-x-3">
+                        <button type="button" onclick="resetCheckDuesSearch()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-bold px-3 py-1 rounded-lg text-xs transition shadow">🔍 Search Another Policy</button>
+                    </div>
+                </div>
+                <div class="p-6 sm:p-8 bg-white no-print">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="policySearchInput" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Search Policy (By Number or Holder Name)</label>
+                            <div class="relative">
+                                <input type="text" id="policySearchInput" placeholder="Type to filter saved policies..." 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm"
+                                    oninput="filterPolicyDropdown()">
+                                <div id="policyDropdownList" class="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto z-20 hidden"></div>
+                            </div>
+                        </div>
+
+                        <div id="selectedPolicyCard" class="hidden bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-blue-900 text-sm" id="cardPolicyTitle">--</span>
+                                <span class="bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-medium" id="cardPlanName">--</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-slate-600">
+                                <div>Mode: <span class="font-semibold text-slate-800" id="cardMode">--</span></div>
+                                <div>Sum Assured: ₹<span class="font-semibold text-slate-800" id="cardSumAssured">0</span></div>
+                                <div>Base Premium: ₹<span class="font-semibold text-slate-800" id="cardBaseAmt">0</span></div>
+                                <div>DOC: <span class="font-semibold text-slate-800" id="cardDoc">--</span></div>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-2 gap-2 text-slate-500 pt-1 border-t border-blue-200/60">
+                                <div>FUP: <span class="text-slate-700 font-medium" id="cardFup">--</span></div>
+                                <div>Contact: <span class="text-slate-700 font-medium" id="cardContact">--</span></div>
+                            </div>
+                        </div>
+
+                        <form id="checkDuesForm" class="space-y-4 pt-2">
+                            <div>
+                                <div class="flex justify-between items-center mb-1">
+                                    <label for="calcFupDate" class="block text-xs font-bold uppercase tracking-wider text-slate-500">First Unpaid Premium (FUP) Date</label>
+                                    <button type="button" onclick="useRecordedFup()" class="text-xs text-blue-600 hover:text-blue-800 font-semibold underline">Auto-load FUP from Record</button>
+                                </div>
+                                <input type="text" id="calcFupDate" required placeholder="YYYY-MM-DD" 
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
+                            </div>
+
+                            <div class="pt-3 flex items-center justify-between border-t border-slate-100 mt-4">
+                                <p class="text-xs text-slate-400">Calculations automatically log to Dues History.</p>
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl shadow-md transition text-sm">
+                                    Calculate Total Dues
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="resultSection" class="hidden p-6 sm:p-8 bg-slate-50/50 border-t border-slate-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-200 gap-2">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Calculation Summary <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal ml-2">Saved to History</span></h3>
+                            <p class="text-xs text-slate-500">Statement generated on <span id="currentPrintDate">--</span></p>
+                        </div>
+                        <span id="policyStatusBadge" class="text-xs px-3 py-1 rounded-full font-semibold self-start sm:self-center"></span>
+                    </div>
+
+                    <div class="bg-blue-50/80 border border-blue-100 rounded-xl p-4 mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                        <div>
+                            <span class="block text-slate-400 font-medium">Policy No / Holder</span>
+                            <span id="resPolicyInfo" class="font-bold text-slate-800 text-sm">--</span>
+                        </div>
+                        <div>
+                            <span class="block text-slate-400 font-medium">Plan Name</span>
+                            <span id="resPlanName" class="font-bold text-slate-800 text-sm">--</span>
+                        </div>
+                        <div>
+                            <span class="block text-slate-400 font-medium">Mode / Grace</span>
+                            <span id="resPlanMode" class="font-bold text-slate-800 text-sm">--</span>
+                        </div>
+                        <div>
+                            <span class="block text-slate-400 font-medium">Overdue Intervals</span>
+                            <span id="resInstallments" class="font-bold text-blue-700 text-sm">--</span>
+                        </div>
+                    </div>
+
+                    <div class="overflow-hidden bg-white rounded-xl border border-slate-200/80 shadow-sm mb-6">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-100/70 text-slate-600 border-b border-slate-200 text-xs uppercase tracking-wider">
+                                    <th class="p-3.5 font-semibold">Fee Component</th>
+                                    <th class="p-3.5 font-semibold text-right">Amount (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 text-slate-700">
+                                <tr>
+                                    <td class="p-3.5">
+                                        <span class="font-medium">Total Premium Due</span>
+                                        <span id="valInstallmentBreakdown" class="block text-xs text-slate-400">--</span>
+                                    </td>
+                                    <td id="valBasePremium" class="p-3.5 text-right font-semibold">₹0.00</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3.5">
+                                        <span class="font-medium">Late Fee Interest</span>
+                                        <span class="block text-xs text-slate-400">9.5% p.a. simple interest past grace</span>
+                                    </td>
+                                    <td id="valLateInterest" class="p-3.5 text-right font-medium text-amber-600">₹0.00</td>
+                                </tr>
+                                <tr id="nachRow" class="hidden">
+                                    <td class="p-3.5">
+                                        <span class="font-medium text-rose-700">NACH Dishonour Penalty</span>
+                                        <span class="block text-xs text-rose-500">Flat charge for failed presentation</span>
+                                    </td>
+                                    <td id="valNachCharge" class="p-3.5 text-right font-medium text-rose-600">₹0.00</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3.5 font-medium">GST Surcharge</td>
+                                    <td id="valGst" class="p-3.5 text-right font-medium text-slate-500">₹0.00 (Exempt)</td>
+                                </tr>
+                                <tr class="bg-blue-900 text-white font-bold text-base">
+                                    <td class="p-4 rounded-bl-xl">Total Payable Amount</td>
+                                    <td id="valTotalPayable" class="p-4 text-right text-amber-400 text-lg rounded-br-xl">₹0.00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-end gap-3 no-print">
+                        <button onclick="shareCalculationSummary()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-xl transition text-sm flex items-center space-x-2 shadow-sm">
+                            <span>Share Summary</span>
+                        </button>
+                        <button onclick="resetCheckDuesSearch()" class="bg-amber-500 hover:bg-amber-600 text-blue-950 font-bold px-5 py-2.5 rounded-xl shadow transition text-sm">
+                            <span>Search Another Policy</span>
+                        </button>
+                        <a href="https://ebiz.licindia.in/D2CPM/" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-6 py-2.5 rounded-xl shadow-md transition text-sm inline-flex items-center space-x-1.5">
+                            <span>Pay on Official LIC Portal</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 3: Report (All) -->
+            <div id="tabReportAll" class="tab-content hidden">
+                <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 py-4 text-white flex justify-between items-center">
+                    <h2 class="font-semibold text-sm tracking-wide uppercase text-blue-100">Report: All Added Policies</h2>
+                    <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded" id="policyCountBadge">0 Policies</span>
+                </div>
+                <div class="p-6 sm:p-8 bg-white">
+                    <div class="mb-4 flex flex-col sm:flex-row gap-2 justify-between items-center">
+                        <input type="text" id="reportSearchBox" placeholder="Filter policies by number, name, or plan..." 
+                            class="w-full sm:w-1/2 px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm"
+                            oninput="renderReportTable()">
+                        <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                            <button onclick="downloadExcelTemplate()" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow transition" title="Download Format">Format</button>
+                            <button onclick="document.getElementById('excelFileInput').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow transition" title="Import Excel">Import</button>
+                            <button onclick="document.getElementById('pdfFileInput').click()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2.5 rounded-xl shadow transition" title="Import PDF">PDF Import</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-100/70 text-slate-600 border-b border-slate-200 text-xs uppercase tracking-wider">
+                                    <th class="p-3 font-semibold">Policy No / Holder</th>
+                                    <th class="p-3 font-semibold">Plan / Dates (DOC/FUP)</th>
+                                    <th class="p-3 font-semibold text-right">Sum Assured</th>
+                                    <th class="p-3 font-semibold text-right">Base Premium</th>
+                                    <th class="p-3 font-semibold">Contact / Email</th>
+                                    <th class="p-3 font-semibold text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reportTableBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 4: Dues History -->
+            <div id="tabCalculationHistory" class="tab-content hidden">
+                <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 py-4 text-white flex justify-between items-center">
+                    <h2 class="font-semibold text-sm tracking-wide uppercase text-blue-100">Dues Calculation History</h2>
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded" id="historyCountBadge">0 Records</span>
+                        <button onclick="clearCalculationHistory()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-2.5 py-1 rounded transition" title="Clear history">Clear History</button>
+                    </div>
+                </div>
+                <div class="p-6 sm:p-8 bg-white">
+                    <div class="mb-4 flex flex-col sm:flex-row gap-2">
+                        <input type="text" id="historySearchBox" placeholder="Search history by policy number or holder name..." 
+                            class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm"
+                            oninput="renderHistoryTable()">
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-100/70 text-slate-600 border-b border-slate-200 text-xs uppercase tracking-wider">
+                                    <th class="p-3 font-semibold">Calc Date / FUP</th>
+                                    <th class="p-3 font-semibold">Policy No / Holder</th>
+                                    <th class="p-3 font-semibold">Status / Mode</th>
+                                    <th class="p-3 font-semibold text-right">Total Payable</th>
+                                    <th class="p-3 font-semibold text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Individual Print Modal -->
+    <div id="individualPrintModal" class="hidden bg-white p-8 rounded-2xl max-w-2xl mx-auto my-6 border border-slate-300 shadow-lg">
+        <div class="flex justify-between items-center border-b pb-4 mb-4">
+            <div>
+                <h2 class="text-lg font-bold text-blue-900">LIC Policy Individual Record</h2>
+                <p class="text-xs text-slate-500">Official Database Profile Summary</p>
+            </div>
+            <div class="text-right text-xs text-slate-500">
+                <span class="font-semibold text-slate-800">Agent Code:</span> LIC0377328K<br>
+                <span class="font-semibold text-slate-800">Advisor:</span> Tarkeshwar Yadav
+            </div>
+        </div>
+        <div id="printModalContent" class="space-y-4 text-xs sm:text-sm"></div>
+        <div class="mt-8 pt-4 border-t flex justify-end space-x-3 no-print">
+            <button onclick="closeIndividualPrint()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-xl font-medium text-xs">Close</button>
+            <button onclick="window.print()" class="px-5 py-2 bg-blue-600 text-white rounded-xl font-medium text-xs shadow">Print Record</button>
+        </div>
+    </div>
+
+    <footer class="bg-slate-200/60 text-slate-400 text-center py-4 text-xs no-print">
+        &copy; 2026 LIC Premium Calculation Portal &bull; Multi-Policy Rules Engine & Auto-Importer
+    </footer>
+
+    <script>
+        function formatDateDDMMYYYY(dateStr) {
+            if (!dateStr || dateStr === 'NA') return 'NA';
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+            return dateStr;
+        }
+
+        function parseExcelDate(val) {
+            if (!val) return 'NA';
+            if (typeof val === 'number') {
+                const dateObj = new Date((val - (25567 + 2)) * 86400 * 1000);
+                const y = dateObj.getFullYear();
+                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const d = String(dateObj.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
+            let str = String(val).trim();
+            if (str.includes('/')) {
+                const p = str.split('/');
+                if (p.length === 3) {
+                    if (p[0].length === 4) {
+                        return `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`;
+                    } else {
+                        return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+                    }
+                }
+            }
+            if (str.includes('-')) {
+                const p = str.split('-');
+                if (p.length === 3) {
+                    if (p[0].length === 4) return str;
+                    return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+                }
+            }
+            return str;
+        }
+
+        // Persistent Database State
+        let policies = JSON.parse(localStorage.getItem('lic_policies')) || [
+            { 
+                policyNo: "384920192", 
+                holderName: "Ramesh Kumar", 
+                dobDate: "1988-05-12",
+                licPlan: "914/21", 
+                paymentMode: "Yearly", 
+                basePremium: 12500, 
+                sumAssured: 0, 
+                docDate: "2020-04-15", 
+                fupDate: "2025-04-15",
+                mobileNo: "9876543210", 
+                emailId: "ramesh.kumar@example.com", 
+                address: "123, Main Street, Varanasi, UP", 
+                nachStatus: "inactive" 
+            }
+        ];
+
+        let calculationHistory = JSON.parse(localStorage.getItem('lic_calculation_history')) || [];
+
+        function savePolicies() {
+            localStorage.setItem('lic_policies', JSON.stringify(policies));
+        }
+
+        function saveHistory() {
+            localStorage.setItem('lic_calculation_history', JSON.stringify(calculationHistory));
+        }
+
+        // Sample Data for Auto-Importer[cite: 1]
+        const sampleParsedData = {
+            "agent_name": "TARKESHWAR YADAV",
+            "agent_code": "LIC0377328K",
+            "branch_code": "28K",
+            "due_period": "09/2026",
+            "premium_due_list": [
+                {"s_no": "1", "policy_no": "296192301", "name_of_assured": "ARUN KUMAR", "doc": "08/08/2025", "pin_tm": "733/21", "mod": "Hly", "fup": "02/2026", "flg": "FY", "inst_prem": "5951.00", "due": "2", "gst": "0.00", "tot_prem": "11902", "est_com": "1636.52"},
+                {"s_no": "2", "policy_no": "258876402", "name_of_assured": "VISHAL YADAV", "doc": "14/08/2022", "pin_tm": "914/21", "mod": "Hly", "fup": "02/2026", "flg": "", "inst_prem": "11528.00", "due": "2", "gst": "0.00", "tot_prem": "23056", "est_com": "1152.80"},
+                {"s_no": "3", "policy_no": "567909400", "name_of_assured": "SUNIL KUMAR KUSHWAHA", "doc": "05/03/2026", "pin_tm": "714/21", "mod": "Mly", "fup": "04/2026", "flg": "FY", "inst_prem": "882.00", "due": "6", "gst": "0.00", "tot_prem": "5292", "est_com": "1058.40"},
+                {"s_no": "4", "policy_no": "259534156", "name_of_assured": "PRAKASH YADAV", "doc": "28/01/2023", "pin_tm": "934/24", "mod": "Qly", "fup": "04/2026", "flg": "", "inst_prem": "2500.00", "due": "2", "gst": "0.00", "tot_prem": "5000", "est_com": "250.00"},
+                {"s_no": "5", "policy_no": "268066233", "name_of_assured": "TARKESHWAR YADAV", "doc": "14/07/2023", "pin_tm": "933/25", "mod": "Yly", "fup": "07/2026", "flg": "", "inst_prem": "22207.00", "due": "1", "gst": "0.00", "tot_prem": "22207", "est_com": "1110.35"},
+                {"s_no": "6", "policy_no": "268066235", "name_of_assured": "BABITA YADAV", "doc": "14/07/2023", "pin_tm": "933/25", "mod": "Yly", "fup": "07/2026", "flg": "", "inst_prem": "20683.00", "due": "1", "gst": "0.00", "tot_prem": "20683", "est_com": "1034.15"},
+                {"s_no": "7", "policy_no": "268062043", "name_of_assured": "DILIP KUMAR", "doc": "17/05/2023", "pin_tm": "914/16", "mod": "Qly", "fup": "08/2026", "flg": "", "inst_prem": "1757.00", "due": "1", "gst": "0.00", "tot_prem": "1757", "est_com": "87.85"},
+                {"s_no": "8", "policy_no": "268509696", "name_of_assured": "SHIVANSH KUSHWAHA", "doc": "27/12/2023", "pin_tm": "934/24", "mod": "Mly", "fup": "08/2026", "flg": "ST", "inst_prem": "4846.00", "due": "2", "gst": "0.00", "tot_prem": "9692", "est_com": "726.90"},
+                {"s_no": "9", "policy_no": "258877585", "name_of_assured": "SANJAY KUMAR MAURYA", "doc": "28/08/2022", "pin_tm": "933/21", "mod": "Mly", "fup": "08/2026", "flg": "", "inst_prem": "4722.00", "due": "2", "gst": "0.00", "tot_prem": "9444", "est_com": "472.20"},
+                {"s_no": "10", "policy_no": "258877586", "name_of_assured": "RAGINI KUSHWAHA", "doc": "28/08/2022", "pin_tm": "933/21", "mod": "Mly", "fup": "08/2026", "flg": "", "inst_prem": "4454.00", "due": "2", "gst": "0.00", "tot_prem": "8908", "est_com": "445.40"},
+                {"s_no": "11", "policy_no": "278451406", "name_of_assured": "KAPIL DEV", "doc": "28/08/2024", "pin_tm": "933/21", "mod": "Qly", "fup": "08/2026", "flg": "ST", "inst_prem": "7214.00", "due": "1", "gst": "0.00", "tot_prem": "7214", "est_com": "541.05"},
+                {"s_no": "12", "policy_no": "258881517", "name_of_assured": "RESHMA", "doc": "01/11/2022", "pin_tm": "936/16", "mod": "Mly", "fup": "09/2026", "flg": "", "inst_prem": "1422.00", "due": "1", "gst": "0.00", "tot_prem": "1422", "est_com": "71.10"},
+                {"s_no": "13", "policy_no": "296194199", "name_of_assured": "POOJA YADAV", "doc": "04/09/2025", "pin_tm": "714/21", "mod": "Yly", "fup": "09/2026", "flg": "ST", "inst_prem": "10294.00", "due": "1", "gst": "0.00", "tot_prem": "10294", "est_com": "772.05"},
+                {"s_no": "14", "policy_no": "258878325", "name_of_assured": "DHANANJAY KUMAR YADAV", "doc": "09/09/2022", "pin_tm": "914/21", "mod": "Hly", "fup": "09/2026", "flg": "", "inst_prem": "4776.00", "due": "1", "gst": "0.00", "tot_prem": "4776", "est_com": "238.80"},
+                {"s_no": "15", "policy_no": "258878556", "name_of_assured": "PRITHVI RAJ SINGH", "doc": "12/09/2022", "pin_tm": "934/24", "mod": "Yly", "fup": "09/2026", "flg": "", "inst_prem": "14571.00", "due": "1", "gst": "0.00", "tot_prem": "14571", "est_com": "728.55"},
+                {"s_no": "16", "policy_no": "296194520", "name_of_assured": "MANJAY KUMAR", "doc": "15/09/2025", "pin_tm": "733/21", "mod": "Yly", "fup": "09/2026", "flg": "ST", "inst_prem": "19322.00", "due": "1", "gst": "0.00", "tot_prem": "19322", "est_com": "1449.15"},
+                {"s_no": "17", "policy_no": "299326829", "name_of_assured": "PREETI MISHRA", "doc": "15/03/2026", "pin_tm": "714/21", "mod": "Mly", "fup": "09/2026", "flg": "FY", "inst_prem": "876.00", "due": "1", "gst": "0.00", "tot_prem": "876", "est_com": "175.20"},
+                {"s_no": "18", "policy_no": "258879029", "name_of_assured": "SURAJ KUMAR", "doc": "21/09/2022", "pin_tm": "914/21", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "1222.00", "due": "1", "gst": "0.00", "tot_prem": "1222", "est_com": "61.10"},
+                {"s_no": "19", "policy_no": "259538467", "name_of_assured": "TARKESHWAR YADAV", "doc": "22/03/2023", "pin_tm": "914/21", "mod": "Mly", "fup": "09/2026", "flg": "", "inst_prem": "416.00", "due": "1", "gst": "0.00", "tot_prem": "416", "est_com": "20.80"},
+                {"s_no": "20", "policy_no": "259538468", "name_of_assured": "MANISH YADAV", "doc": "22/03/2023", "pin_tm": "914/21", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "1239.00", "due": "1", "gst": "0.00", "tot_prem": "1239", "est_com": "61.95"},
+                {"s_no": "21", "policy_no": "259538469", "name_of_assured": "RADHA KRISHNA VISHWAKARMA", "doc": "22/03/2023", "pin_tm": "914/16", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "3567.00", "due": "1", "gst": "0.00", "tot_prem": "3567", "est_com": "178.35"},
+                {"s_no": "22", "policy_no": "296194745", "name_of_assured": "VIVEK SRIVASTAV", "doc": "22/09/2025", "pin_tm": "733/21", "mod": "Yly", "fup": "09/2026", "flg": "ST", "inst_prem": "31052.00", "due": "1", "gst": "0.00", "tot_prem": "31052", "est_com": "2328.90"},
+                {"s_no": "23", "policy_no": "249188295", "name_of_assured": "AAYUSH YADAV", "doc": "25/03/2022", "pin_tm": "934/20", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "7756.00", "due": "1", "gst": "0.00", "tot_prem": "7756", "est_com": "387.80"},
+                {"s_no": "24", "policy_no": "278454010", "name_of_assured": "AVINASH KUMAR CHAUHAN", "doc": "28/09/2024", "pin_tm": "914/21", "mod": "Hly", "fup": "09/2026", "flg": "ST", "inst_prem": "3879.00", "due": "1", "gst": "0.00", "tot_prem": "3879", "est_com": "290.93"},
+                {"s_no": "25", "policy_no": "279495441", "name_of_assured": "DHIRAJ YADAV", "doc": "28/12/2024", "pin_tm": "736/25", "mod": "Qly", "fup": "09/2026", "flg": "ST", "inst_prem": "5410.00", "due": "1", "gst": "0.00", "tot_prem": "5410", "est_com": "405.75"},
+                {"s_no": "26", "policy_no": "279502218", "name_of_assured": "MANJU DEVI", "doc": "28/03/2025", "pin_tm": "714/16", "mod": "Hly", "fup": "09/2026", "flg": "ST", "inst_prem": "7139.00", "due": "1", "gst": "0.00", "tot_prem": "7139", "est_com": "535.42"}
+            ]
+        };
+
+        let importerExtractedRecords = [];
+
+        function processAutoImporterDocument() {
+            const fileInput = document.getElementById('importerPdfFile');
+            const matchDocDayOpt = document.getElementById('matchDocDayOpt').checked;
+            const metaDiv = document.getElementById('metaInfo');
+            const tbody = document.querySelector('#importerResultTable tbody');
+            
+            metaDiv.className = "text-xs font-bold text-amber-600 mb-4";
+            metaDiv.innerText = "Parsing document using AI extraction pipeline...[cite: 1]";
+            tbody.innerHTML = "";
+            importerExtractedRecords = [];
+
+            setTimeout(() => {
+                const data = sampleParsedData;
+                metaDiv.className = "text-xs font-bold text-slate-700 mb-4";
+                metaDiv.innerHTML = `Branch Code: ${data.branch_code} | Agent Name: ${data.agent_name} | Agent Code: ${data.agent_code} | Due Period: ${data.due_period}`;
+
+                data.premium_due_list.forEach(item => {
+                    let formattedFup = item.fup;
+                    if (matchDocDayOpt && item.doc && item.doc.includes('/')) {
+                        const docParts = item.doc.split('/');
+                        const docDay = docParts[0];
+                        if (item.fup && item.fup.includes('/')) {
+                            const fupParts = item.fup.split('/');
+                            formattedFup = `${docDay}/${fupParts[0]}/${fupParts[1]}`;
+                        }
+                    }
+
+                    importerExtractedRecords.push({
+                        policyNo: item.policy_no,
+                        nameOfAssured: item.name_of_assured,
+                        doc: item.doc,
+                        pinTm: item.pin_tm,
+                        mod: item.mod,
+                        fup: formattedFup,
+                        instPrem: item.inst_prem
+                    });
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3">${item.s_no}</td>
+                            <td class="p-3 font-bold text-slate-800">${item.policy_no}</td>
+                            <td class="p-3 font-semibold text-slate-700">${item.name_of_assured}</td>
+                            <td class="p-3">${item.doc}</td>
+                            <td class="p-3">${item.pin_tm}</td>
+                            <td class="p-3">${item.mod}</td>
+                            <td class="p-3 font-medium text-blue-700">${formattedFup}</td>
+                            <td class="p-3">${item.flg}</td>
+                            <td class="p-3 text-right">₹${item.inst_prem}</td>
+                            <td class="p-3">${item.due}</td>
+                            <td class="p-3">${item.gst}</td>
+                            <td class="p-3 text-right font-bold">₹${item.tot_prem}</td>
+                            <td class="p-3 text-right">₹${item.est_com}</td>
+                        </tr>
+                    `;
+                });
+
+                document.getElementById('updateDatabaseBtn').disabled = false;
+                document.getElementById('downloadExcelBtn').disabled = false;
+                document.getElementById('downloadPdfBtn').disabled = false;
+            }, 600);
+        }
+
+        function updatePortalDatabaseFromImporter() {
+            if (importerExtractedRecords.length === 0) {
+                alert("No records extracted to update. Please extract the document first.");
+                return;
+            }
+
+            let addedCount = 0;
+            let updatedCount = 0;
+
+            importerExtractedRecords.forEach(rec => {
+                const policyNo = rec.policyNo;
+                const holderName = rec.nameOfAssured;
+                const licPlan = rec.pinTm;
+                
+                let paymentMode = "Yearly";
+                const m = (rec.mod || '').toLowerCase();
+                if (m.includes('m')) paymentMode = "Monthly";
+                else if (m.includes('q')) paymentMode = "Quarterly";
+                else if (m.includes('h')) paymentMode = "Half Yearly";
+                else if (m.includes('y')) paymentMode = "Yearly";
+
+                const basePremium = parseFloat(rec.instPrem) || 0;
+
+                let docDate = "NA";
+                if (rec.doc && rec.doc.includes('/')) {
+                    const p = rec.doc.split('/');
+                    if (p.length === 3) docDate = `${p[2]}-${p[1]}-${p[0]}`;
+                }
+
+                let fupDate = rec.fup || "NA";
+                if (fupDate.includes('/')) {
+                    const p = fupDate.split('/');
+                    if (p.length === 3) fupDate = `${p[2]}-${p[1]}-${p[0]}`;
+                }
+
+                const existingIndex = policies.findIndex(p => p.policyNo === policyNo);
+
+                if (existingIndex === -1) {
+                    const newPolicyRecord = {
+                        policyNo: policyNo,
+                        holderName: holderName,
+                        licPlan: licPlan,
+                        paymentMode: paymentMode,
+                        basePremium: basePremium,
+                        docDate: docDate,
+                        fupDate: fupDate,
+                        dobDate: "NA",
+                        sumAssured: 0,
+                        mobileNo: "NA",
+                        emailId: "NA",
+                        address: "NA",
+                        nachStatus: "inactive"
+                    };
+                    policies.push(newPolicyRecord);
+                    addedCount++;
+                } else {
+                    let existing = policies[existingIndex];
+                    existing.holderName = holderName;
+                    existing.licPlan = licPlan;
+                    existing.paymentMode = paymentMode;
+                    existing.basePremium = basePremium;
+                    existing.docDate = docDate;
+                    existing.fupDate = fupDate;
+                    updatedCount++;
+                }
+            });
+
+            savePolicies();
+            renderReportTable();
+            alert(`Database Updated Successfully!\n• New Policies Added: ${addedCount}\n• Existing Records Updated: ${updatedCount}`);
+            switchTab('reportAll');
+        }
+
+        function downloadImporterExcel() {
+            if (importerExtractedRecords.length === 0) return;
+            const headers = ["Policy No", "Name of Assured", "Pin/Tm", "Mod", "Inst. Prem", "D.o.C.", "FUP"];
+            let csv = "\uFEFF" + headers.join(",") + "\n";
+            importerExtractedRecords.forEach(r => {
+                csv += `"${r.policyNo}","${r.nameOfAssured}","${r.pinTm}","${r.mod}","${r.instPrem}","${r.doc}","${r.fup}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `LIC_Premium_Due_${sampleParsedData.due_period.replace('/', '-')}.csv`;
+            link.click();
+        }
+
+        function downloadImporterPDF() {
+            if (importerExtractedRecords.length === 0) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape', 'mm', 'a4');
+            doc.setFontSize(16);
+            doc.setTextColor(26, 54, 93);
+            doc.text("LIC Premium Due Report", 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Agent Name: ${sampleParsedData.agent_name} | Agent Code: ${sampleParsedData.agent_code} | Due: ${sampleParsedData.due_period}`, 14, 22);
+
+            const rows = importerExtractedRecords.map(r => [r.policyNo, r.nameOfAssured, r.pinTm, r.mod, r.instPrem, r.doc, r.fup]);
+            doc.autoTable({
+                head: [["Policy No", "Name of Assured", "Pin/Tm", "Mod", "Inst. Prem", "D.o.C.", "FUP"]],
+                body: rows,
+                startY: 28,
+                theme: 'grid',
+                headStyles: { fillColor: [43, 108, 176] }
+            });
+            doc.save(`LIC_Premium_Due_${sampleParsedData.due_period.replace('/', '-')}.pdf`);
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('tabAutoImporter').classList.add('hidden');
+            document.getElementById('tabAddPolicy').classList.add('hidden');
+            document.getElementById('tabCheckDues').classList.add('hidden');
+            document.getElementById('tabReportAll').classList.add('hidden');
+            document.getElementById('tabCalculationHistory').classList.add('hidden');
+            document.getElementById('individualPrintModal').classList.add('hidden');
+            document.querySelector('main > div').classList.remove('hidden');
+
+            ['navAutoImporter', 'navAddPolicy', 'navCheckDues', 'navReportAll', 'navCalculationHistory'].forEach(id => {
+                document.getElementById(id).className = "py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition text-slate-600 hover:bg-slate-100";
+                if(id === 'navCalculationHistory') document.getElementById(id).className = "col-span-2 sm:col-span-1 py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition text-slate-600 hover:bg-slate-100";
+            });
+
+            if (tabId === 'autoImporter') {
+                document.getElementById('tabAutoImporter').classList.remove('hidden');
+                document.getElementById('navAutoImporter').className = "py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition bg-blue-600 text-white shadow";
+            } else if (tabId === 'addPolicy') {
+                document.getElementById('tabAddPolicy').classList.remove('hidden');
+                document.getElementById('navAddPolicy').className = "py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition bg-blue-600 text-white shadow";
+            } else if (tabId === 'checkDues') {
+                document.getElementById('tabCheckDues').classList.remove('hidden');
+                document.getElementById('navCheckDues').className = "py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition bg-blue-600 text-white shadow";
+            } else if (tabId === 'reportAll') {
+                document.getElementById('tabReportAll').classList.remove('hidden');
+                document.getElementById('navReportAll').className = "py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition bg-blue-600 text-white shadow";
+                renderReportTable();
+            } else if (tabId === 'calculationHistory') {
+                document.getElementById('tabCalculationHistory').classList.remove('hidden');
+                document.getElementById('navCalculationHistory').className = "col-span-2 sm:col-span-1 py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition bg-blue-600 text-white shadow";
+                renderHistoryTable();
+            }
+        }
+
+        document.getElementById('addPolicyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const editIndex = document.getElementById('editPolicyIndex').value;
+            const policyNoInput = document.getElementById('newPolicyNo').value.trim();
+            
+            const updatedPolicy = {
+                policyNo: policyNoInput,
+                holderName: document.getElementById('newHolderName').value.trim(),
+                dobDate: document.getElementById('newDobDate').value.trim(),
+                licPlan: document.getElementById('newLicPlan').value.trim(),
+                paymentMode: document.getElementById('newPaymentMode').value,
+                basePremium: parseFloat(document.getElementById('newBasePremium').value) || 0,
+                sumAssured: parseFloat(document.getElementById('newSumAssured').value) || 0,
+                docDate: document.getElementById('newDocDate').value.trim(),
+                fupDate: document.getElementById('newFupDate').value.trim(),
+                mobileNo: document.getElementById('newMobileNo').value.trim() || "NA",
+                emailId: document.getElementById('newEmailId').value.trim() || "NA",
+                address: document.getElementById('newAddress').value.trim() || "NA",
+                nachStatus: document.getElementById('newNachYes').checked ? 'active' : 'inactive'
+            };
+
+            const existingIndex = policies.findIndex(p => p.policyNo === policyNoInput);
+
+            if (editIndex !== "") {
+                policies[parseInt(editIndex)] = updatedPolicy;
+                alert('Policy record updated successfully!');
+            } else {
+                if (existingIndex !== -1) {
+                    policies[existingIndex] = updatedPolicy;
+                    alert(`Duplicate Policy Number "${policyNoInput}" detected! Previous data has been successfully updated.`);
+                } else {
+                    policies.push(updatedPolicy);
+                    alert('Policy successfully added to database!');
+                }
+            }
+
+            savePolicies();
+            resetFormToAddNew();
+            switchTab('reportAll');
+        });
+
+        function editPolicy(index) {
+            const p = policies[index];
+            if (!p) return;
+
+            document.getElementById('editPolicyIndex').value = index;
+            document.getElementById('newPolicyNo').value = p.policyNo;
+            document.getElementById('newHolderName').value = p.holderName;
+            document.getElementById('newDobDate').value = p.dobDate || 'NA';
+            document.getElementById('newLicPlan').value = p.licPlan;
+            document.getElementById('newPaymentMode').value = p.paymentMode;
+            document.getElementById('newBasePremium').value = p.basePremium;
+            document.getElementById('newSumAssured').value = p.sumAssured !== undefined ? p.sumAssured : 0;
+            document.getElementById('newDocDate').value = p.docDate;
+            document.getElementById('newFupDate').value = p.fupDate || p.docDate;
+            document.getElementById('newMobileNo').value = p.mobileNo || 'NA';
+            document.getElementById('newEmailId').value = p.emailId || 'NA';
+            document.getElementById('newAddress').value = p.address || 'NA';
+
+            if (p.nachStatus === 'active') document.getElementById('newNachYes').checked = true;
+            else document.getElementById('newNachNo').checked = true;
+
+            document.getElementById('formTitleHeading').innerText = `Edit Policy Record: ${p.policyNo}`;
+            document.getElementById('formModeBadge').innerText = `Updating Record #${parseInt(index)+1}`;
+            document.getElementById('savePolicyBtn').innerText = 'Update Policy Record';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            switchTab('addPolicy');
+        }
+
+        function resetFormToAddNew() {
+            document.getElementById('addPolicyForm').reset();
+            document.getElementById('editPolicyIndex').value = '';
+            document.getElementById('newSumAssured').value = '0';
+            document.getElementById('formTitleHeading').innerText = 'Add New Policy Record';
+            document.getElementById('formModeBadge').innerText = 'Database Entry';
+            document.getElementById('savePolicyBtn').innerText = 'Save Policy Record';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        }
+
+        function filterPolicyDropdown() {
+            const query = document.getElementById('policySearchInput').value.toLowerCase().trim();
+            const dropdown = document.getElementById('policyDropdownList');
+            if (!query) { dropdown.classList.add('hidden'); return; }
+            const filtered = policies.filter(p => p.policyNo.toLowerCase().includes(query) || p.holderName.toLowerCase().includes(query));
+            if (filtered.length === 0) {
+                dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400">No matching policies found</div>`;
+            } else {
+                dropdown.innerHTML = filtered.map(p => `
+                    <div onclick="selectPolicy('${p.policyNo}')" class="p-3 hover:bg-blue-50 cursor-pointer border-b border-slate-100 text-xs">
+                        <span class="font-bold text-slate-800">${p.policyNo}</span> - ${p.holderName} 
+                        <span class="block text-slate-400 text-[10px]">Plan: ${p.licPlan} (${p.paymentMode})</span>
+                    </div>
+                `).join('');
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        let selectedPolicy = null;
+        let currentShareText = "";
+
+        function selectPolicy(policyNo) {
+            selectedPolicy = policies.find(p => p.policyNo === policyNo);
+            if (!selectedPolicy) return;
+
+            document.getElementById('policySearchInput').value = `${selectedPolicy.policyNo} - ${selectedPolicy.holderName}`;
+            document.getElementById('policyDropdownList').classList.add('hidden');
+
+            document.getElementById('cardPolicyTitle').innerText = `${selectedPolicy.policyNo} (${selectedPolicy.holderName})`;
+            document.getElementById('cardPlanName').innerText = selectedPolicy.licPlan;
+            document.getElementById('cardMode').innerText = selectedPolicy.paymentMode;
+            document.getElementById('cardSumAssured').innerText = selectedPolicy.sumAssured ? selectedPolicy.sumAssured.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00';
+            document.getElementById('cardBaseAmt').innerText = selectedPolicy.basePremium.toFixed(2);
+            document.getElementById('cardDoc').innerText = formatDateDDMMYYYY(selectedPolicy.docDate);
+            document.getElementById('cardFup').innerText = formatDateDDMMYYYY(selectedPolicy.fupDate || selectedPolicy.docDate);
+            document.getElementById('cardContact').innerText = selectedPolicy.mobileNo || 'NA';
+            document.getElementById('selectedPolicyCard').classList.remove('hidden');
+
+            if (selectedPolicy.fupDate && selectedPolicy.fupDate !== 'NA') {
+                document.getElementById('calcFupDate').value = selectedPolicy.fupDate;
+            } else if (selectedPolicy.docDate) {
+                document.getElementById('calcFupDate').value = selectedPolicy.docDate;
+            }
+        }
+
+        function resetCheckDuesSearch() {
+            selectedPolicy = null;
+            document.getElementById('policySearchInput').value = '';
+            document.getElementById('selectedPolicyCard').classList.add('hidden');
+            document.getElementById('resultSection').classList.add('hidden');
+            document.getElementById('calcFupDate').value = '';
+            document.getElementById('policySearchInput').focus();
+        }
+
+        function useRecordedFup() {
+            if (!selectedPolicy) { alert('Please select a policy first.'); return; }
+            if (selectedPolicy.fupDate && selectedPolicy.fupDate !== 'NA') {
+                document.getElementById('calcFupDate').value = selectedPolicy.fupDate;
+            } else if (selectedPolicy.docDate) {
+                document.getElementById('calcFupDate').value = selectedPolicy.docDate;
+            }
+        }
+
+        function shareCalculationSummary() {
+            if (!currentShareText) {
+                alert("Please calculate dues first to share the summary.");
+                return;
+            }
+            if (navigator.share) {
+                navigator.share({
+                    title: 'LIC Policy Calculation Summary',
+                    text: currentShareText
+                }).catch(err => console.log('Error sharing:', err));
+            } else {
+                navigator.clipboard.writeText(currentShareText).then(() => {
+                    alert('Calculation summary copied to clipboard!');
+                }).catch(() => {
+                    prompt("Copy summary:", currentShareText);
+                });
+            }
+        }
+
+        function shareHistoryItem(index) {
+            const h = calculationHistory[index];
+            if (!h) return;
+            const historyShareText = `📋 *LIC Policy Calculation Summary*\n\n• Calc Date / FUP: ${h.calcDate} / ${h.fupDate}\n• Policy No / Holder: ${h.policyNo} / ${h.holderName}\n• Status: ${h.statusText}\n• Total Payable: ₹${h.totalPayable.toFixed(2)}\n\n👤 Tarkeshwar Yadav (Senior Insurance Advisor)`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'LIC Policy Calculation History',
+                    text: historyShareText
+                }).catch(err => console.log('Error sharing:', err));
+            } else {
+                navigator.clipboard.writeText(historyShareText).then(() => {
+                    alert('Calculation summary copied to clipboard!');
+                }).catch(() => {
+                    prompt("Copy summary:", historyShareText);
+                });
+            }
+        }
+
+        document.getElementById('checkDuesForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!selectedPolicy) { alert('Please search and select a policy first.'); return; }
+            const fupDateStr = document.getElementById('calcFupDate').value;
+            if (!fupDateStr) return;
+
+            const fupDate = new Date(fupDateStr);
+            const formattedFup = formatDateDDMMYYYY(fupDateStr);
+            const currentDate = new Date();
+            const diffTime = currentDate - fupDate;
+            const totalDaysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            let gracePeriodDays = (selectedPolicy.paymentMode === "Monthly") ? 15 : 30;
+            let intervalDays = 365;
+            if (selectedPolicy.paymentMode === "Monthly") intervalDays = 30;
+            else if (selectedPolicy.paymentMode === "Quarterly") intervalDays = 91;
+            else if (selectedPolicy.paymentMode === "Half Yearly") intervalDays = 182;
+
+            let numberOfInstallments = Math.max(1, Math.ceil(totalDaysOverdue / intervalDays));
+            const totalBasePremium = selectedPolicy.basePremium * numberOfInstallments;
+
+            let interest = 0;
+            let statusText = "";
+            let badgeClass = "";
+
+            if (totalDaysOverdue <= gracePeriodDays) {
+                statusText = "Within Grace Period";
+                badgeClass = "bg-emerald-100 text-emerald-800 border border-emerald-200";
+                numberOfInstallments = 1;
+            } else {
+                statusText = "Late Fee Applicable";
+                badgeClass = "bg-rose-100 text-rose-800 border border-rose-200";
+                const taxableDays = totalDaysOverdue - gracePeriodDays;
+                interest = totalBasePremium * 0.095 * (taxableDays / 365);
+                if (interest > 0 && interest < 5) interest = 5.00;
+            }
+
+            let nachCharge = selectedPolicy.nachStatus === 'active' ? 125.00 : 0;
+            if (nachCharge > 0) document.getElementById('nachRow').classList.remove('hidden');
+            else document.getElementById('nachRow').classList.add('hidden');
+
+            const totalPayable = totalBasePremium + interest + nachCharge;
+            const formattedCurrentDate = new Date().toISOString().slice(0, 10).split('-').reverse().join('-');
+
+            calculationHistory.unshift({
+                calcDate: formattedCurrentDate,
+                policyNo: selectedPolicy.policyNo,
+                holderName: selectedPolicy.holderName,
+                licPlan: selectedPolicy.licPlan,
+                paymentMode: selectedPolicy.paymentMode,
+                fupDate: formattedFup,
+                statusText: statusText,
+                totalPayable: totalPayable,
+                basePremiumDue: totalBasePremium,
+                interest: interest,
+                nachCharge: nachCharge,
+                installmentsCount: numberOfInstallments
+            });
+            saveHistory();
+
+            document.getElementById('currentPrintDate').innerText = formattedCurrentDate;
+            document.getElementById('resPolicyInfo').innerText = `${selectedPolicy.policyNo} (${selectedPolicy.holderName})`;
+            document.getElementById('resPlanName').innerText = selectedPolicy.licPlan;
+            document.getElementById('resPlanMode').innerText = `${selectedPolicy.paymentMode} (${selectedPolicy.nachStatus === 'active' ? 'NACH Active' : 'Manual'})`;
+            document.getElementById('resInstallments').innerText = `${numberOfInstallments} ${selectedPolicy.paymentMode} Installment(s)`;
+            document.getElementById('valInstallmentBreakdown').innerText = `${numberOfInstallments} × ₹${selectedPolicy.basePremium.toFixed(2)} per ${selectedPolicy.paymentMode.toLowerCase()}`;
+            document.getElementById('valBasePremium').innerText = `₹${totalBasePremium.toFixed(2)}`;
+            document.getElementById('valLateInterest').innerText = `₹${interest.toFixed(2)}`;
+            document.getElementById('valNachCharge').innerText = `₹${nachCharge.toFixed(2)}`;
+            document.getElementById('valGst').innerText = `₹0.00 (Exempt)`;
+            document.getElementById('valTotalPayable').innerText = `₹${totalPayable.toFixed(2)}`;
+
+            const badge = document.getElementById('policyStatusBadge');
+            badge.innerText = statusText;
+            badge.className = `text-xs px-3 py-1 rounded-full font-semibold ${badgeClass}`;
+
+            currentShareText = `📋 *LIC Policy Calculation Summary*\n\n• Policy No / Holder: ${selectedPolicy.policyNo} / ${selectedPolicy.holderName}\n• Plan: ${selectedPolicy.licPlan}\n• Status: ${statusText}\n• Total Payable: ₹${totalPayable.toFixed(2)}\n\n👤 Tarkeshwar Yadav (Senior Insurance Advisor)`;
+            document.getElementById('resultSection').classList.remove('hidden');
+        });
+
+        function renderReportTable() {
+            const query = document.getElementById('reportSearchBox')?.value.toLowerCase().trim() || "";
+            const tbody = document.getElementById('reportTableBody');
+            const filtered = policies.map((p, originalIndex) => ({ ...p, originalIndex })).filter(p => p.policyNo.toLowerCase().includes(query) || p.holderName.toLowerCase().includes(query) || p.licPlan.toLowerCase().includes(query));
+            document.getElementById('policyCountBadge').innerText = `${policies.length} Policies`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">No records found</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(p => `
+                <tr class="hover:bg-slate-50 transition text-xs">
+                    <td class="p-3"><span class="font-bold text-slate-800">${p.policyNo}</span><span class="block text-slate-500">${p.holderName}</span></td>
+                    <td class="p-3"><span class="text-slate-800 font-medium">${p.licPlan}</span><span class="block text-slate-400 text-[10px]">DOC: ${formatDateDDMMYYYY(p.docDate)} | FUP: ${formatDateDDMMYYYY(p.fupDate)}</span></td>
+                    <td class="p-3 text-right font-semibold">₹${p.sumAssured !== undefined ? p.sumAssured.toLocaleString('en-IN') : '0'}</td>
+                    <td class="p-3 text-right font-semibold">₹${p.basePremium.toFixed(2)}</td>
+                    <td class="p-3"><span class="text-slate-700">${p.mobileNo}</span><span class="block text-slate-400 text-[10px]">${p.emailId}</span></td>
+                    <td class="p-3 text-center space-x-1 whitespace-nowrap">
+                        <button onclick="printIndividualRecord(${p.originalIndex})" class="text-indigo-600 font-bold">Print</button>
+                        <button onclick="switchTab('checkDues'); selectPolicy('${p.policyNo}');" class="text-blue-600 font-semibold">Dues</button>
+                        <button onclick="editPolicy(${p.originalIndex})" class="text-amber-600">Edit</button>
+                        <button onclick="policies.splice(${p.originalIndex},1); savePolicies(); renderReportTable();" class="text-rose-500">Del</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderHistoryTable() {
+            const query = document.getElementById('historySearchBox')?.value.toLowerCase().trim() || "";
+            const tbody = document.getElementById('historyTableBody');
+            const filtered = calculationHistory.map((h, originalIndex) => ({ ...h, originalIndex })).filter(h => h.policyNo.toLowerCase().includes(query) || h.holderName.toLowerCase().includes(query));
+            document.getElementById('historyCountBadge').innerText = `${calculationHistory.length} Records`;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 text-xs">No calculation history found</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = filtered.map(h => `
+                <tr class="hover:bg-slate-50 transition text-xs">
+                    <td class="p-3"><span class="font-bold">${h.calcDate}</span><span class="block text-slate-400 text-[10px]">FUP: ${h.fupDate}</span></td>
+                    <td class="p-3"><span class="font-bold">${h.policyNo}</span><span class="block text-slate-500">${h.holderName}</span></td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded font-semibold ${h.statusText === 'Within Grace Period' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${h.statusText}</span></td>
+                    <td class="p-3 text-right font-bold text-blue-900 text-sm">₹${h.totalPayable.toFixed(2)}</td>
+                    <td class="p-3 text-center space-x-2">
+                        <button onclick="shareHistoryItem(${h.originalIndex})" class="text-indigo-600 font-semibold">Share</button>
+                        <button onclick="calculationHistory.splice(${h.originalIndex},1); saveHistory(); renderHistoryTable();" class="text-rose-500">Del</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function printIndividualRecord(index) {
+            const p = policies[index];
+            if (!p) return;
+            document.getElementById('printModalContent').innerHTML = `
+                <div class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border text-xs">
+                    <div><span class="block text-slate-400 font-bold uppercase text-[10px]">Policy Number</span><span class="font-bold text-sm text-slate-800">${p.policyNo}</span></div>
+                    <div><span class="block text-slate-400 font-bold uppercase text-[10px]">Policy Holder Name</span><span class="font-bold text-sm text-slate-800">${p.holderName}</span></div>
+                    <div><span class="block text-slate-400 font-bold uppercase text-[10px]">LIC Plan</span><span>${p.licPlan}</span></div>
+                    <div><span class="block text-slate-400 font-bold uppercase text-[10px]">Payment Mode</span><span>${p.paymentMode}</span></div>
+                    <div><span class="block text-slate-400 font-bold uppercase text-[10px]">Sum Assured</span><span>₹${p.sumAssured !== undefined ? p.sumAssured.toLocaleString('en-IN', {minimumFractionDigits: 2}) : '0.00'}</span></div>
+                    <div><span class="block text-slate-400 font-bold uppercase text-[10px]">Base Premium</span><span>₹${p.basePremium.toFixed(2)}</span></div>
+                    <div><span class="block text-slate-400 font-bold uppercase text-[10px]">Date of Commencement</span><span>${formatDateDDMMYYYY(p.docDate)}</span></div>
+                </div>`;
+            document.querySelector('main > div').classList.add('hidden');
+            document.getElementById('individualPrintModal').classList.remove('hidden');
+        }
+
+        function closeIndividualPrint() {
+            document.getElementById('individualPrintModal').classList.add('hidden');
+            document.querySelector('main > div').classList.remove('hidden');
+        }
+
+        function backupDatabase() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ policies, history: calculationHistory }, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `lic_portal_backup_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dl); dl.click(); dl.remove();
+        }
+
+        function restoreDatabase(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const r = new FileReader();
+            r.onload = function(evt) {
+                try {
+                    const d = JSON.parse(evt.target.result);
+                    if (d.policies) { policies = d.policies; calculationHistory = d.history || []; savePolicies(); saveHistory(); alert('Database restored successfully!'); }
+                } catch(err) { alert('Invalid backup file.'); }
+            };
+            r.readAsText(file);
+        }
+
+        function clearCalculationHistory() {
+            if(confirm('Clear all calculation history?')) { calculationHistory = []; saveHistory(); renderHistoryTable(); }
+        }
+
+        function downloadExcelTemplate() {
+            const ws = XLSX.utils.json_to_sheet([{"Policy No": "384920192", "Name of Assured": "Ramesh Kumar", "Pin/Tm": "914/21", "Mod": "Yly", "Sum Assured": 0, "Inst. Prem": 12500, "D.o.C.": "2020-04-15", "FUP": "2025-04-15"}]);
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Template");
+            XLSX.writeFile(wb, "LIC_Import_Template.xlsx");
+        }
+
+        function importExcelFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const r = new FileReader();
+            r.onload = function(evt) {
+                const data = new Uint8Array(evt.target.result);
+                const wb = XLSX.read(data, { type: 'array' });
+                const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                rows.forEach(row => {
+                    const pNo = String(row['Policy No'] || row['Policy Number'] || '').trim();
+                    if (!pNo) return;
+                    policies.push({
+                        policyNo: pNo,
+                        holderName: row['Name of Assured'] || row['Holder Name'] || 'NA',
+                        licPlan: row['Pin/Tm'] || row['LIC Plan'] || '914/21',
+                        paymentMode: 'Yearly',
+                        basePremium: parseFloat(row['Inst. Prem'] || row['Base Premium'] || 5000),
+                        sumAssured: parseFloat(row['Sum Assured'] || row['Sum_Assured'] || 0),
+                        docDate: parseExcelDate(row['D.o.C.'] || '2026-01-01'),
+                        fupDate: parseExcelDate(row['FUP'] || '2026-01-01'),
+                        dobDate: 'NA', mobileNo: 'NA', emailId: 'NA', address: 'NA', nachStatus: 'inactive'
+                    });
+                });
+                savePolicies(); renderReportTable(); alert('Excel imported successfully!');
+            };
+            r.readAsArrayBuffer(file);
+        }
+
+        async function importPdfFile(e) {
+            alert('Use the Due Auto-Importer tab for advanced PDF due list extraction.');
+        }
+    </script>
+</body>
+</html>

@@ -296,7 +296,7 @@
                 <div id="resultSection" class="hidden p-6 sm:p-8 bg-slate-50/50 border-t border-slate-200">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-200 gap-2">
                         <div>
-                            <h3 class="text-base font-bold text-slate-800">Calculation Summary <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal ml-2">Saved to History</span></h3>
+                            <h3 class="text-base font-bold text-slate-800">Premium Dues <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal ml-2">Saved to History</span></h3>
                             <p class="text-xs text-slate-500">Statement generated on <span id="currentPrintDate">--</span></p>
                         </div>
                         <span id="policyStatusBadge" class="text-xs px-3 py-1 rounded-full font-semibold self-start sm:self-center"></span>
@@ -924,42 +924,49 @@
             }
         }
 
+        function triggerWhatsAppShare(mobileNo, message) {
+            let cleanPhone = (mobileNo || "").replace(/\D/g, '');
+            if (cleanPhone.length === 10) {
+                cleanPhone = "91" + cleanPhone; // Default to India country code if 10 digits
+            }
+            if (cleanPhone.length >= 11) {
+                const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+                window.open(whatsappUrl, '_blank');
+            } else {
+                // Fallback to Web Share or Clipboard if no valid phone number available
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Premium Dues',
+                        text: message
+                    }).catch(err => console.log('Error sharing:', err));
+                } else {
+                    navigator.clipboard.writeText(message).then(() => {
+                        alert('Policyholder number not available or invalid. Summary copied to clipboard!');
+                    }).catch(() => {
+                        prompt("Copy summary:", message);
+                    });
+                }
+            }
+        }
+
         function shareCalculationSummary() {
             if (!currentShareText) {
                 alert("Please calculate dues first to share the summary.");
                 return;
             }
-            if (navigator.share) {
-                navigator.share({
-                    title: 'LIC Policy Calculation Summary',
-                    text: currentShareText
-                }).catch(err => console.log('Error sharing:', err));
-            } else {
-                navigator.clipboard.writeText(currentShareText).then(() => {
-                    alert('Calculation summary copied to clipboard!');
-                }).catch(() => {
-                    prompt("Copy summary:", currentShareText);
-                });
-            }
+            const phone = selectedPolicy ? selectedPolicy.mobileNo : "";
+            triggerWhatsAppShare(phone, currentShareText);
         }
 
         function shareHistoryItem(index) {
             const h = calculationHistory[index];
             if (!h) return;
-            const historyShareText = `📋 *LIC Policy Calculation Summary*\n\n• Calc Date / FUP: ${h.calcDate} / ${h.fupDate}\n• Policy No / Holder: ${h.policyNo} / ${h.holderName}\n• Status: ${h.statusText}\n• Total Payable: ₹${h.totalPayable.toFixed(2)}\n\n👤 Tarkeshwar Yadav (Senior Insurance Advisor)`;
+            const historyShareText = `📋 *Premium Dues*\n\n• Calc Date / FUP: ${h.calcDate} / ${h.fupDate}\n• Policy No / Holder: ${h.policyNo} / ${h.holderName}\n• Status: ${h.statusText}\n• Total Payable: ₹${h.totalPayable.toFixed(2)}\n\n👤 Tarkeshwar Yadav (Senior Insurance Advisor)`;
             
-            if (navigator.share) {
-                navigator.share({
-                    title: 'LIC Policy Calculation History',
-                    text: historyShareText
-                }).catch(err => console.log('Error sharing:', err));
-            } else {
-                navigator.clipboard.writeText(historyShareText).then(() => {
-                    alert('Calculation summary copied to clipboard!');
-                }).catch(() => {
-                    prompt("Copy summary:", historyShareText);
-                });
-            }
+            // Look up policy to get holder's phone number if saved
+            const matchedPolicy = policies.find(p => p.policyNo === h.policyNo);
+            const phone = matchedPolicy ? matchedPolicy.mobileNo : "";
+            triggerWhatsAppShare(phone, historyShareText);
         }
 
         document.getElementById('checkDuesForm').addEventListener('submit', function(e) {
@@ -1038,7 +1045,7 @@
             badge.innerText = statusText;
             badge.className = `text-xs px-3 py-1 rounded-full font-semibold ${badgeClass}`;
 
-            currentShareText = `📋 *LIC Policy Calculation Summary*\n\n• Policy No / Holder: ${selectedPolicy.policyNo} / ${selectedPolicy.holderName}\n• Plan: ${selectedPolicy.licPlan}\n• Status: ${statusText}\n• Total Payable: ₹${totalPayable.toFixed(2)}\n\n👤 Tarkeshwar Yadav (Senior Insurance Advisor) Mob. No. 7800872270`;
+            currentShareText = `📋 *Premium Dues*\n\n• Policy No / Holder: ${selectedPolicy.policyNo} / ${selectedPolicy.holderName}\n• Plan: ${selectedPolicy.licPlan}\n• Status: ${statusText}\n• Total Payable: ₹${totalPayable.toFixed(2)}\n\n👤 Tarkeshwar Yadav (Senior Insurance Advisor) Mob. No. 7800872270`;
             document.getElementById('resultSection').classList.remove('hidden');
         });
 

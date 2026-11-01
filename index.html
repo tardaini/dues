@@ -34,7 +34,7 @@
                 <div class="bg-amber-500 text-blue-950 font-black px-3.5 py-1.5 rounded-lg text-lg tracking-wider shadow">LIC</div>
                 <div>
                     <h1 class="text-lg font-bold tracking-wide">LIC Portal & Auto-Importer</h1>
-                    <p class="text-xs text-blue-200">Interactive Policy Fee Manager & Due Importer</p>
+                    <p class="text-xs text-blue-200">Interactive Policy Fee Manager & Cloud Sync Portal</p>
                 </div>
             </div>
             
@@ -42,8 +42,8 @@
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden" onchange="importExcelFile(event)">
                 <input type="file" id="pdfFileInput" accept=".pdf" class="hidden" onchange="importPdfFile(event)">
 
-                <button onclick="backupDatabase()" class="bg-blue-800 hover:bg-blue-700 text-blue-200 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-700 transition" title="Backup Database">Backup</button>
-                <label class="bg-blue-800 hover:bg-blue-700 text-blue-200 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-700 transition cursor-pointer" title="Restore Database">
+                <button onclick="backupDatabase()" class="bg-blue-800 hover:bg-blue-700 text-blue-200 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-700 transition" title="Backup Local Copy">Backup</button>
+                <label class="bg-blue-800 hover:bg-blue-700 text-blue-200 text-xs font-semibold px-3 py-2 rounded-xl border border-blue-700 transition cursor-pointer" title="Restore to Firestore">
                     Restore <input type="file" id="restoreFileInput" accept=".json" class="hidden" onchange="restoreDatabase(event)">
                 </label>
             </div>
@@ -77,20 +77,20 @@
             <div id="tabAutoImporter" class="tab-content">
                 <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 py-4 text-white flex justify-between items-center">
                     <h2 class="font-semibold text-sm tracking-wide uppercase text-blue-100">LIC Premium Due Auto-Importer & System Manager</h2>
-                    <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded">Auto Sync</span>
+                    <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded">Firebase Live Sync</span>
                 </div>
                 <div class="p-6 sm:p-8 bg-white">
                     <div class="upload-section mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-wrap gap-4 items-center justify-between">
                         <div class="flex flex-wrap items-center gap-4">
                             <input type="file" id="importerPdfFile" accept=".pdf, .png, .jpg, .jpeg" class="text-xs text-slate-600">
                             <label class="flex items-center space-x-2 text-xs font-bold text-slate-700 cursor-pointer">
-                                <input type="checkbox" id="matchDocDayOpt" class="rounded text-blue-600 focus:ring-blue-500">
-                                <span>Match FUP day with D.o.C day (Month from PDF)[cite: 1]</span>
+                                <input type="checkbox" id="matchDocDayOpt" checked class="rounded text-blue-600 focus:ring-blue-500">
+                                <span>Match FUP day with D.o.C day (Month from PDF)</span>
                             </label>
                         </div>
                         <div class="flex flex-wrap gap-2">
                             <button onclick="processAutoImporterDocument()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow">Extract & Populate Webpage</button>
-                            <button id="updateDatabaseBtn" onclick="updatePortalDatabaseFromImporter()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow disabled:opacity-50" disabled>Update Database</button>
+                            <button id="updateDatabaseBtn" onclick="updatePortalDatabaseFromImporter()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow disabled:opacity-50" disabled>Update Firestore Database</button>
                             <button id="downloadExcelBtn" onclick="downloadImporterExcel()" class="bg-sky-700 hover:bg-sky-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow disabled:opacity-50">Download Excel</button>
                             <button id="downloadPdfBtn" onclick="downloadImporterPDF()" class="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow disabled:opacity-50">Download PDF</button>
                         </div>
@@ -129,7 +129,7 @@
             <div id="tabAddPolicy" class="tab-content hidden">
                 <div class="bg-gradient-to-r from-blue-900 to-blue-800 px-6 py-4 text-white flex justify-between items-center">
                     <h2 class="font-semibold text-sm tracking-wide uppercase text-blue-100" id="formTitleHeading">Add New Policy Record</h2>
-                    <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded" id="formModeBadge">Database Entry</span>
+                    <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded" id="formModeBadge">Cloud Entry</span>
                 </div>
                 <div class="p-6 sm:p-8 bg-white">
                     <form id="addPolicyForm" class="space-y-4">
@@ -137,13 +137,13 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label for="newPolicyNo" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Policy Number (Policy No)</label>
-                                <input type="text" id="newPolicyNo" required placeholder="e.g. 384920192" 
+                                <input type="text" id="newPolicyNo" required placeholder="e.g. 567909400" 
                                     class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
                             </div>
 
                             <div>
                                 <label for="newHolderName" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Policyholder Name (Name of Assured)</label>
-                                <input type="text" id="newHolderName" required placeholder="e.g. Ramesh Kumar" 
+                                <input type="text" id="newHolderName" required placeholder="e.g. SUNIL KUMAR KUSHWAHA" 
                                     class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
                             </div>
 
@@ -155,7 +155,7 @@
 
                             <div>
                                 <label for="newLicPlan" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">LIC Plan (Pin/Tm)</label>
-                                <input type="text" id="newLicPlan" required placeholder="e.g. 914/21" 
+                                <input type="text" id="newLicPlan" required placeholder="e.g. 714/21" 
                                     class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
                             </div>
 
@@ -171,7 +171,7 @@
 
                             <div>
                                 <label for="newBasePremium" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Base Premium Amount (Inst. Prem) (₹)</label>
-                                <input type="number" id="newBasePremium" required step="0.01" min="0" placeholder="e.g. 12500" 
+                                <input type="number" id="newBasePremium" required step="0.01" min="0" placeholder="e.g. 882" 
                                     class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm">
                             </div>
 
@@ -207,7 +207,7 @@
 
                             <div class="sm:col-span-2">
                                 <label for="newAddress" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Address</label>
-                                <textarea id="newAddress" rows="2" placeholder="Enter full postal address or NA">NA</textarea>
+                                <textarea id="newAddress" rows="2" class="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:outline-none transition text-sm" placeholder="Enter full postal address or NA">NA</textarea>
                             </div>
 
                             <div class="sm:col-span-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
@@ -227,7 +227,7 @@
 
                         <div class="pt-3 flex items-center justify-between border-t border-slate-100 mt-4">
                             <button type="button" onclick="resetFormToAddNew()" id="cancelEditBtn" class="hidden text-xs text-rose-600 font-semibold hover:underline">Cancel Edit</button>
-                            <p class="text-xs text-slate-400" id="formFooterHint">Duplicate policy numbers are automatically blocked & updated.</p>
+                            <p class="text-xs text-slate-400" id="formFooterHint">Policy data automatically syncs with Firebase Firestore cloud.</p>
                             <button type="submit" id="savePolicyBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl shadow-md transition text-sm">
                                 Save Policy Record
                             </button>
@@ -294,7 +294,7 @@
                             </div>
 
                             <div class="pt-3 flex items-center justify-between border-t border-slate-100 mt-4">
-                                <p class="text-xs text-slate-400">Calculations automatically log to Dues History.</p>
+                                <p class="text-xs text-slate-400">Calculations automatically log to Firestore History.</p>
                                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-xl shadow-md transition text-sm">
                                     Calculate Total Dues
                                 </button>
@@ -306,7 +306,7 @@
                 <div id="resultSection" class="hidden p-6 sm:p-8 bg-slate-50/50 border-t border-slate-200">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 pb-4 border-b border-slate-200 gap-2">
                         <div>
-                            <h3 class="text-base font-bold text-slate-800">Premium Dues <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal ml-2">Saved to History</span></h3>
+                            <h3 class="text-base font-bold text-slate-800">Premium Dues <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-normal ml-2">Synced to Firestore</span></h3>
                             <p class="text-xs text-slate-500">Statement generated on <span id="currentPrintDate">--</span></p>
                         </div>
                         <span id="policyStatusBadge" class="text-xs px-3 py-1 rounded-full font-semibold self-start sm:self-center"></span>
@@ -428,7 +428,7 @@
                     <h2 class="font-semibold text-sm tracking-wide uppercase text-blue-100">Dues Calculation History</h2>
                     <div class="flex items-center space-x-2">
                         <span class="text-xs bg-amber-500 text-blue-950 font-bold px-2.5 py-0.5 rounded" id="historyCountBadge">0 Records</span>
-                        <button onclick="clearCalculationHistory()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-2.5 py-1 rounded transition" title="Clear history">Clear History</button>
+                        <button onclick="clearCalculationHistory()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-2.5 py-1 rounded transition" title="Clear history from Firestore">Clear History</button>
                     </div>
                 </div>
                 <div class="p-6 sm:p-8 bg-white">
@@ -462,7 +462,7 @@
         <div class="flex justify-between items-center border-b pb-4 mb-4">
             <div>
                 <h2 class="text-lg font-bold text-blue-900">LIC Policy Individual Record</h2>
-                <p class="text-xs text-slate-500">Official Database Profile Summary</p>
+                <p class="text-xs text-slate-500">Official Cloud Profile Summary</p>
             </div>
             <div class="text-right text-xs text-slate-500">
                 <span class="font-semibold text-slate-800">Agent Code:</span> LIC0377328K<br>
@@ -477,16 +477,79 @@
     </div>
 
     <footer class="bg-slate-200/60 text-slate-400 text-center py-4 text-xs no-print">
-        &copy; 2026 LIC Premium Calculation Portal &bull; Multi-Policy Rules Engine & Auto-Importer
+        &copy; 2026 LIC Premium Calculation Portal &bull; Firebase Firestore Synced
     </footer>
 
-    <script>
+    <!-- Firebase App & Cloud Firestore Integration -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            setDoc, 
+            getDocs, 
+            deleteDoc, 
+            onSnapshot, 
+            query, 
+            orderBy 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBMWePQ39ZlNMFT6zmkFqIZC7tsoax2NcM",
+            authDomain: "licdues.firebaseapp.com",
+            projectId: "licdues",
+            storageBucket: "licdues.firebasestorage.app",
+            messagingSenderId: "800516457419",
+            appId: "1:800516457419:web:e1a6a06022d3b9fdca6c4e",
+            measurementId: "G-L5EM8JLFP3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getFirestore(app);
+
+        const policiesColRef = collection(db, "policies");
+        const historyColRef = collection(db, "calculation_history");
+
+        let policies = [];
+        let calculationHistory = [];
+        let importerExtractedRecords = [];
+        let selectedPolicy = null;
+        let currentShareText = "";
+
+        // -------------------------------------------------------------
+        // Real-time Firestore Listeners
+        // -------------------------------------------------------------
+        function initFirestoreListeners() {
+            onSnapshot(policiesColRef, (snapshot) => {
+                policies = [];
+                snapshot.forEach((docSnap) => {
+                    policies.push(docSnap.data());
+                });
+                window.renderReportTable();
+            }, (err) => console.error("Policies Sync Error:", err));
+
+            const historyQuery = query(historyColRef, orderBy("timestamp", "desc"));
+            onSnapshot(historyQuery, (snapshot) => {
+                calculationHistory = [];
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    data.id = docSnap.id;
+                    calculationHistory.push(data);
+                });
+                window.renderHistoryTable();
+            }, (err) => console.error("History Sync Error:", err));
+        }
+
+        // -------------------------------------------------------------
+        // Global Helpers
+        // -------------------------------------------------------------
         function formatDateDDMMYYYY(dateStr) {
             if (!dateStr || dateStr === 'NA') return 'NA';
             const parts = dateStr.split('-');
-            if (parts.length === 3) {
-                return `${parts[2]}-${parts[1]}-${parts[0]}`;
-            }
+            if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
             return dateStr;
         }
 
@@ -503,11 +566,9 @@
             if (str.includes('/')) {
                 const p = str.split('/');
                 if (p.length === 3) {
-                    if (p[0].length === 4) {
-                        return `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`;
-                    } else {
-                        return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
-                    }
+                    return p[0].length === 4 
+                        ? `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`
+                        : `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
                 }
             }
             if (str.includes('-')) {
@@ -520,244 +581,43 @@
             return str;
         }
 
-        // Persistent Database State
-        let policies = JSON.parse(localStorage.getItem('lic_policies')) || [
-            { 
-                policyNo: "384920192", 
-                holderName: "Ramesh Kumar", 
-                dobDate: "1988-05-12",
-                licPlan: "914/21", 
-                paymentMode: "Yearly", 
-                basePremium: 12500, 
-                sumAssured: 0, 
-                docDate: "2020-04-15", 
-                fupDate: "2025-04-15",
-                mobileNo: "9876543210", 
-                emailId: "ramesh.kumar@example.com", 
-                address: "123, Main Street, Varanasi, UP", 
-                nachStatus: "inactive" 
-            }
-        ];
-
-        let calculationHistory = JSON.parse(localStorage.getItem('lic_calculation_history')) || [];
-
-        function savePolicies() {
-            localStorage.setItem('lic_policies', JSON.stringify(policies));
-        }
-
-        function saveHistory() {
-            localStorage.setItem('lic_calculation_history', JSON.stringify(calculationHistory));
-        }
-
-        // Sample Data for Auto-Importer[cite: 1]
         const sampleParsedData = {
             "agent_name": "TARKESHWAR YADAV",
             "agent_code": "LIC0377328K",
             "branch_code": "28K",
-            "due_period": "09/2026",
+            "due_period": "11/2026",
             "premium_due_list": [
-                {"s_no": "1", "policy_no": "296192301", "name_of_assured": "ARUN KUMAR", "doc": "08/08/2025", "pin_tm": "733/21", "mod": "Hly", "fup": "02/2026", "flg": "FY", "inst_prem": "5951.00", "due": "2", "gst": "0.00", "tot_prem": "11902", "est_com": "1636.52"},
-                {"s_no": "2", "policy_no": "258876402", "name_of_assured": "VISHAL YADAV", "doc": "14/08/2022", "pin_tm": "914/21", "mod": "Hly", "fup": "02/2026", "flg": "", "inst_prem": "11528.00", "due": "2", "gst": "0.00", "tot_prem": "23056", "est_com": "1152.80"},
-                {"s_no": "3", "policy_no": "567909400", "name_of_assured": "SUNIL KUMAR KUSHWAHA", "doc": "05/03/2026", "pin_tm": "714/21", "mod": "Mly", "fup": "04/2026", "flg": "FY", "inst_prem": "882.00", "due": "6", "gst": "0.00", "tot_prem": "5292", "est_com": "1058.40"},
-                {"s_no": "4", "policy_no": "259534156", "name_of_assured": "PRAKASH YADAV", "doc": "28/01/2023", "pin_tm": "934/24", "mod": "Qly", "fup": "04/2026", "flg": "", "inst_prem": "2500.00", "due": "2", "gst": "0.00", "tot_prem": "5000", "est_com": "250.00"},
-                {"s_no": "5", "policy_no": "268066233", "name_of_assured": "TARKESHWAR YADAV", "doc": "14/07/2023", "pin_tm": "933/25", "mod": "Yly", "fup": "07/2026", "flg": "", "inst_prem": "22207.00", "due": "1", "gst": "0.00", "tot_prem": "22207", "est_com": "1110.35"},
-                {"s_no": "6", "policy_no": "268066235", "name_of_assured": "BABITA YADAV", "doc": "14/07/2023", "pin_tm": "933/25", "mod": "Yly", "fup": "07/2026", "flg": "", "inst_prem": "20683.00", "due": "1", "gst": "0.00", "tot_prem": "20683", "est_com": "1034.15"},
-                {"s_no": "7", "policy_no": "268062043", "name_of_assured": "DILIP KUMAR", "doc": "17/05/2023", "pin_tm": "914/16", "mod": "Qly", "fup": "08/2026", "flg": "", "inst_prem": "1757.00", "due": "1", "gst": "0.00", "tot_prem": "1757", "est_com": "87.85"},
-                {"s_no": "8", "policy_no": "268509696", "name_of_assured": "SHIVANSH KUSHWAHA", "doc": "27/12/2023", "pin_tm": "934/24", "mod": "Mly", "fup": "08/2026", "flg": "ST", "inst_prem": "4846.00", "due": "2", "gst": "0.00", "tot_prem": "9692", "est_com": "726.90"},
-                {"s_no": "9", "policy_no": "258877585", "name_of_assured": "SANJAY KUMAR MAURYA", "doc": "28/08/2022", "pin_tm": "933/21", "mod": "Mly", "fup": "08/2026", "flg": "", "inst_prem": "4722.00", "due": "2", "gst": "0.00", "tot_prem": "9444", "est_com": "472.20"},
-                {"s_no": "10", "policy_no": "258877586", "name_of_assured": "RAGINI KUSHWAHA", "doc": "28/08/2022", "pin_tm": "933/21", "mod": "Mly", "fup": "08/2026", "flg": "", "inst_prem": "4454.00", "due": "2", "gst": "0.00", "tot_prem": "8908", "est_com": "445.40"},
-                {"s_no": "11", "policy_no": "278451406", "name_of_assured": "KAPIL DEV", "doc": "28/08/2024", "pin_tm": "933/21", "mod": "Qly", "fup": "08/2026", "flg": "ST", "inst_prem": "7214.00", "due": "1", "gst": "0.00", "tot_prem": "7214", "est_com": "541.05"},
-                {"s_no": "12", "policy_no": "258881517", "name_of_assured": "RESHMA", "doc": "01/11/2022", "pin_tm": "936/16", "mod": "Mly", "fup": "09/2026", "flg": "", "inst_prem": "1422.00", "due": "1", "gst": "0.00", "tot_prem": "1422", "est_com": "71.10"},
-                {"s_no": "13", "policy_no": "296194199", "name_of_assured": "POOJA YADAV", "doc": "04/09/2025", "pin_tm": "714/21", "mod": "Yly", "fup": "09/2026", "flg": "ST", "inst_prem": "10294.00", "due": "1", "gst": "0.00", "tot_prem": "10294", "est_com": "772.05"},
-                {"s_no": "14", "policy_no": "258878325", "name_of_assured": "DHANANJAY KUMAR YADAV", "doc": "09/09/2022", "pin_tm": "914/21", "mod": "Hly", "fup": "09/2026", "flg": "", "inst_prem": "4776.00", "due": "1", "gst": "0.00", "tot_prem": "4776", "est_com": "238.80"},
-                {"s_no": "15", "policy_no": "258878556", "name_of_assured": "PRITHVI RAJ SINGH", "doc": "12/09/2022", "pin_tm": "934/24", "mod": "Yly", "fup": "09/2026", "flg": "", "inst_prem": "14571.00", "due": "1", "gst": "0.00", "tot_prem": "14571", "est_com": "728.55"},
-                {"s_no": "16", "policy_no": "296194520", "name_of_assured": "MANJAY KUMAR", "doc": "15/09/2025", "pin_tm": "733/21", "mod": "Yly", "fup": "09/2026", "flg": "ST", "inst_prem": "19322.00", "due": "1", "gst": "0.00", "tot_prem": "19322", "est_com": "1449.15"},
-                {"s_no": "17", "policy_no": "299326829", "name_of_assured": "PREETI MISHRA", "doc": "15/03/2026", "pin_tm": "714/21", "mod": "Mly", "fup": "09/2026", "flg": "FY", "inst_prem": "876.00", "due": "1", "gst": "0.00", "tot_prem": "876", "est_com": "175.20"},
-                {"s_no": "18", "policy_no": "258879029", "name_of_assured": "SURAJ KUMAR", "doc": "21/09/2022", "pin_tm": "914/21", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "1222.00", "due": "1", "gst": "0.00", "tot_prem": "1222", "est_com": "61.10"},
-                {"s_no": "19", "policy_no": "259538467", "name_of_assured": "TARKESHWAR YADAV", "doc": "22/03/2023", "pin_tm": "914/21", "mod": "Mly", "fup": "09/2026", "flg": "", "inst_prem": "416.00", "due": "1", "gst": "0.00", "tot_prem": "416", "est_com": "20.80"},
-                {"s_no": "20", "policy_no": "259538468", "name_of_assured": "MANISH YADAV", "doc": "22/03/2023", "pin_tm": "914/21", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "1239.00", "due": "1", "gst": "0.00", "tot_prem": "1239", "est_com": "61.95"},
-                {"s_no": "21", "policy_no": "259538469", "name_of_assured": "RADHA KRISHNA VISHWAKARMA", "doc": "22/03/2023", "pin_tm": "914/16", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "3567.00", "due": "1", "gst": "0.00", "tot_prem": "3567", "est_com": "178.35"},
-                {"s_no": "22", "policy_no": "296194745", "name_of_assured": "VIVEK SRIVASTAV", "doc": "22/09/2025", "pin_tm": "733/21", "mod": "Yly", "fup": "09/2026", "flg": "ST", "inst_prem": "31052.00", "due": "1", "gst": "0.00", "tot_prem": "31052", "est_com": "2328.90"},
-                {"s_no": "23", "policy_no": "249188295", "name_of_assured": "AAYUSH YADAV", "doc": "25/03/2022", "pin_tm": "934/20", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "7756.00", "due": "1", "gst": "0.00", "tot_prem": "7756", "est_com": "387.80"},
-                {"s_no": "24", "policy_no": "278454010", "name_of_assured": "AVINASH KUMAR CHAUHAN", "doc": "28/09/2024", "pin_tm": "914/21", "mod": "Hly", "fup": "09/2026", "flg": "ST", "inst_prem": "3879.00", "due": "1", "gst": "0.00", "tot_prem": "3879", "est_com": "290.93"},
-                {"s_no": "25", "policy_no": "279495441", "name_of_assured": "DHIRAJ YADAV", "doc": "28/12/2024", "pin_tm": "736/25", "mod": "Qly", "fup": "09/2026", "flg": "ST", "inst_prem": "5410.00", "due": "1", "gst": "0.00", "tot_prem": "5410", "est_com": "405.75"},
-                {"s_no": "26", "policy_no": "279502218", "name_of_assured": "MANJU DEVI", "doc": "28/03/2025", "pin_tm": "714/16", "mod": "Hly", "fup": "09/2026", "flg": "ST", "inst_prem": "7139.00", "due": "1", "gst": "0.00", "tot_prem": "7139", "est_com": "535.42"}
+                {"s_no": "1", "policy_no": "567909400", "name_of_assured": "SUNIL KUMAR KUSHWAHA", "doc": "05/03/2026", "pin_tm": "714/21", "mod": "Mly", "fup": "04/2026", "flg": "FY", "inst_prem": "882.00", "due": "8", "gst": "0.00", "tot_prem": "7056", "est_com": "1411.20"},
+                {"s_no": "2", "policy_no": "259534156", "name_of_assured": "PRAKASH YADAV", "doc": "28/01/2023", "pin_tm": "934/24", "mod": "Qly", "fup": "04/2026", "flg": "", "inst_prem": "2500.00", "due": "3", "gst": "0.00", "tot_prem": "7500", "est_com": "375.00"},
+                {"s_no": "3", "policy_no": "268066233", "name_of_assured": "TARKESHWAR YADAV", "doc": "14/07/2023", "pin_tm": "933/25", "mod": "Yly", "fup": "07/2026", "flg": "", "inst_prem": "22207.00", "due": "1", "gst": "0.00", "tot_prem": "22207", "est_com": "1110.35"},
+                {"s_no": "4", "policy_no": "268066235", "name_of_assured": "BABITA YADAV", "doc": "14/07/2023", "pin_tm": "933/25", "mod": "Yly", "fup": "07/2026", "flg": "", "inst_prem": "20683.00", "due": "1", "gst": "0.00", "tot_prem": "20683", "est_com": "1034.15"},
+                {"s_no": "5", "policy_no": "268062043", "name_of_assured": "DILIP KUMAR", "doc": "17/05/2023", "pin_tm": "914/16", "mod": "Qly", "fup": "08/2026", "flg": "", "inst_prem": "1757.00", "due": "2", "gst": "0.00", "tot_prem": "3514", "est_com": "175.70"},
+                {"s_no": "6", "policy_no": "278451406", "name_of_assured": "KAPIL DEV", "doc": "28/08/2024", "pin_tm": "933/21", "mod": "Qly", "fup": "08/2026", "flg": "ST", "inst_prem": "7214.00", "due": "2", "gst": "0.00", "tot_prem": "14428", "est_com": "1082.10"},
+                {"s_no": "7", "policy_no": "259538468", "name_of_assured": "MANISH YADAV", "doc": "22/03/2023", "pin_tm": "914/21", "mod": "Qly", "fup": "09/2026", "flg": "", "inst_prem": "1239.00", "due": "1", "gst": "0.00", "tot_prem": "1239", "est_com": "61.95"},
+                {"s_no": "8", "policy_no": "278454754", "name_of_assured": "GAUTAM KUMAR YADAV", "doc": "08/10/2024", "pin_tm": "733/21", "mod": "Yly", "fup": "10/2026", "flg": "ST", "inst_prem": "12004.00", "due": "1", "gst": "0.00", "tot_prem": "12004", "est_com": "900.30"},
+                {"s_no": "9", "policy_no": "258880883", "name_of_assured": "MANJU VISHWAKARMA", "doc": "23/10/2022", "pin_tm": "933/21", "mod": "Qly", "fup": "10/2026", "flg": "", "inst_prem": "2967.00", "due": "1", "gst": "0.00", "tot_prem": "2967", "est_com": "148.35"},
+                {"s_no": "10", "policy_no": "268509696", "name_of_assured": "SHIVANSH KUSHWAHA", "doc": "27/12/2023", "pin_tm": "934/24", "mod": "Mly", "fup": "10/2026", "flg": "ST", "inst_prem": "4846.00", "due": "2", "gst": "0.00", "tot_prem": "9692", "est_com": "726.90"},
+                {"s_no": "11", "policy_no": "258877585", "name_of_assured": "SANJAY KUMAR MAURYA", "doc": "28/08/2022", "pin_tm": "933/21", "mod": "Mly", "fup": "10/2026", "flg": "", "inst_prem": "4722.00", "due": "2", "gst": "0.00", "tot_prem": "9444", "est_com": "472.20"},
+                {"s_no": "12", "policy_no": "258877586", "name_of_assured": "RAGINI KUSHWAHA", "doc": "28/08/2022", "pin_tm": "933/21", "mod": "Mly", "fup": "10/2026", "flg": "", "inst_prem": "4454.00", "due": "2", "gst": "0.00", "tot_prem": "8908", "est_com": "445.40"},
+                {"s_no": "13", "policy_no": "259534154", "name_of_assured": "VISHAL VISHWAKARMA", "doc": "28/01/2023", "pin_tm": "920/20", "mod": "Qly", "fup": "10/2026", "flg": "", "inst_prem": "5797.00", "due": "1", "gst": "0.00", "tot_prem": "5797", "est_com": "289.85"},
+                {"s_no": "14", "policy_no": "258881517", "name_of_assured": "RESHMA", "doc": "01/11/2022", "pin_tm": "936/16", "mod": "Mly", "fup": "11/2026", "flg": "", "inst_prem": "1422.00", "due": "1", "gst": "0.00", "tot_prem": "1422", "est_com": "71.10"},
+                {"s_no": "15", "policy_no": "296192299", "name_of_assured": "VIJENDRA KUMAR YADAV", "doc": "08/08/2025", "pin_tm": "733/21", "mod": "Qly", "fup": "11/2026", "flg": "ST", "inst_prem": "6122.00", "due": "1", "gst": "0.00", "tot_prem": "6122", "est_com": "459.15"},
+                {"s_no": "16", "policy_no": "296192302", "name_of_assured": "SAURABH YADAV", "doc": "08/08/2025", "pin_tm": "733/21", "mod": "Qly", "fup": "11/2026", "flg": "ST", "inst_prem": "6056.00", "due": "1", "gst": "0.00", "tot_prem": "6056", "est_com": "454.20"},
+                {"s_no": "17", "policy_no": "296192303", "name_of_assured": "ANURAG KUMAR YADAV", "doc": "08/08/2025", "pin_tm": "733/21", "mod": "Qly", "fup": "11/2026", "flg": "ST", "inst_prem": "6159.00", "due": "1", "gst": "0.00", "tot_prem": "6159", "est_com": "461.92"},
+                {"s_no": "18", "policy_no": "278456011", "name_of_assured": "NIKITA SHAH", "doc": "15/11/2024", "pin_tm": "714/21", "mod": "Hly", "fup": "11/2026", "flg": "ST", "inst_prem": "5837.00", "due": "1", "gst": "0.00", "tot_prem": "5837", "est_com": "437.77"},
+                {"s_no": "19", "policy_no": "299326829", "name_of_assured": "PREETI MISHRA", "doc": "15/03/2026", "pin_tm": "714/21", "mod": "Mly", "fup": "11/2026", "flg": "FY", "inst_prem": "876.00", "due": "1", "gst": "0.00", "tot_prem": "876", "est_com": "175.20"},
+                {"s_no": "20", "policy_no": "277623727", "name_of_assured": "PRINCE YADAV", "doc": "20/05/2024", "pin_tm": "914/21", "mod": "Hly", "fup": "11/2026", "flg": "ST", "inst_prem": "11516.00", "due": "1", "gst": "0.00", "tot_prem": "11516", "est_com": "863.70"},
+                {"s_no": "21", "policy_no": "259538467", "name_of_assured": "TARKESHWAR YADAV", "doc": "22/03/2023", "pin_tm": "914/21", "mod": "Mly", "fup": "11/2026", "flg": "", "inst_prem": "416.00", "due": "1", "gst": "0.00", "tot_prem": "416", "est_com": "20.80"},
+                {"s_no": "22", "policy_no": "249192649", "name_of_assured": "SANDHYA DEVI", "doc": "23/05/2022", "pin_tm": "936/21", "mod": "Hly", "fup": "11/2026", "flg": "", "inst_prem": "5585.00", "due": "1", "gst": "0.00", "tot_prem": "5585", "est_com": "279.25"},
+                {"s_no": "23", "policy_no": "567900373", "name_of_assured": "SONU KUMAR", "doc": "24/11/2025", "pin_tm": "736/25", "mod": "Yly", "fup": "11/2026", "flg": "ST", "inst_prem": "11481.00", "due": "1", "gst": "0.00", "tot_prem": "11481", "est_com": "861.07"},
+                {"s_no": "24", "policy_no": "259536106", "name_of_assured": "KUSHAWAHA SANDEEP", "doc": "27/02/2023", "pin_tm": "914/21", "mod": "Qly", "fup": "11/2026", "flg": "", "inst_prem": "1256.00", "due": "1", "gst": "0.00", "tot_prem": "1256", "est_com": "62.80"}
             ]
         };
 
-        let importerExtractedRecords = [];
-
-        function processAutoImporterDocument() {
-            const fileInput = document.getElementById('importerPdfFile');
-            const matchDocDayOpt = document.getElementById('matchDocDayOpt').checked;
-            const metaDiv = document.getElementById('metaInfo');
-            const tbody = document.querySelector('#importerResultTable tbody');
-            
-            metaDiv.className = "text-xs font-bold text-amber-600 mb-4";
-            metaDiv.innerText = "Parsing document using AI extraction pipeline...[cite: 1]";
-            tbody.innerHTML = "";
-            importerExtractedRecords = [];
-
-            setTimeout(() => {
-                const data = sampleParsedData;
-                metaDiv.className = "text-xs font-bold text-slate-700 mb-4";
-                metaDiv.innerHTML = `Branch Code: ${data.branch_code} | Agent Name: ${data.agent_name} | Agent Code: ${data.agent_code} | Due Period: ${data.due_period}`;
-
-                data.premium_due_list.forEach(item => {
-                    let formattedFup = item.fup;
-                    if (matchDocDayOpt && item.doc && item.doc.includes('/')) {
-                        const docParts = item.doc.split('/');
-                        const docDay = docParts[0];
-                        if (item.fup && item.fup.includes('/')) {
-                            const fupParts = item.fup.split('/');
-                            formattedFup = `${docDay}/${fupParts[0]}/${fupParts[1]}`;
-                        }
-                    }
-
-                    importerExtractedRecords.push({
-                        policyNo: item.policy_no,
-                        nameOfAssured: item.name_of_assured,
-                        doc: item.doc,
-                        pinTm: item.pin_tm,
-                        mod: item.mod,
-                        fup: formattedFup,
-                        instPrem: item.inst_prem
-                    });
-
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="p-3">${item.s_no}</td>
-                            <td class="p-3 font-bold text-slate-800">${item.policy_no}</td>
-                            <td class="p-3 font-semibold text-slate-700">${item.name_of_assured}</td>
-                            <td class="p-3">${item.doc}</td>
-                            <td class="p-3">${item.pin_tm}</td>
-                            <td class="p-3">${item.mod}</td>
-                            <td class="p-3 font-medium text-blue-700">${formattedFup}</td>
-                            <td class="p-3">${item.flg}</td>
-                            <td class="p-3 text-right">₹${item.inst_prem}</td>
-                            <td class="p-3">${item.due}</td>
-                            <td class="p-3">${item.gst}</td>
-                            <td class="p-3 text-right font-bold">₹${item.tot_prem}</td>
-                            <td class="p-3 text-right">₹${item.est_com}</td>
-                        </tr>
-                    `;
-                });
-
-                document.getElementById('updateDatabaseBtn').disabled = false;
-                document.getElementById('downloadExcelBtn').disabled = false;
-                document.getElementById('downloadPdfBtn').disabled = false;
-            }, 600);
-        }
-
-        function updatePortalDatabaseFromImporter() {
-            if (importerExtractedRecords.length === 0) {
-                alert("No records extracted to update. Please extract the document first.");
-                return;
-            }
-
-            let addedCount = 0;
-            let updatedCount = 0;
-
-            importerExtractedRecords.forEach(rec => {
-                const policyNo = rec.policyNo;
-                const holderName = rec.nameOfAssured;
-                const licPlan = rec.pinTm;
-                
-                let paymentMode = "Yearly";
-                const m = (rec.mod || '').toLowerCase();
-                if (m.includes('m')) paymentMode = "Monthly";
-                else if (m.includes('q')) paymentMode = "Quarterly";
-                else if (m.includes('h')) paymentMode = "Half Yearly";
-                else if (m.includes('y')) paymentMode = "Yearly";
-
-                const basePremium = parseFloat(rec.instPrem) || 0;
-
-                let docDate = "NA";
-                if (rec.doc && rec.doc.includes('/')) {
-                    const p = rec.doc.split('/');
-                    if (p.length === 3) docDate = `${p[2]}-${p[1]}-${p[0]}`;
-                }
-
-                let fupDate = rec.fup || "NA";
-                if (fupDate.includes('/')) {
-                    const p = fupDate.split('/');
-                    if (p.length === 3) fupDate = `${p[2]}-${p[1]}-${p[0]}`;
-                }
-
-                const existingIndex = policies.findIndex(p => p.policyNo === policyNo);
-
-                if (existingIndex === -1) {
-                    const newPolicyRecord = {
-                        policyNo: policyNo,
-                        holderName: holderName,
-                        licPlan: licPlan,
-                        paymentMode: paymentMode,
-                        basePremium: basePremium,
-                        docDate: docDate,
-                        fupDate: fupDate,
-                        dobDate: "NA",
-                        sumAssured: 0,
-                        mobileNo: "NA",
-                        emailId: "NA",
-                        address: "NA",
-                        nachStatus: "inactive"
-                    };
-                    policies.push(newPolicyRecord);
-                    addedCount++;
-                } else {
-                    let existing = policies[existingIndex];
-                    existing.holderName = holderName;
-                    existing.licPlan = licPlan;
-                    existing.paymentMode = paymentMode;
-                    existing.basePremium = basePremium;
-                    existing.docDate = docDate;
-                    existing.fupDate = fupDate;
-                    updatedCount++;
-                }
-            });
-
-            savePolicies();
-            renderReportTable();
-            alert(`Database Updated Successfully!\n• New Policies Added: ${addedCount}\n• Existing Records Updated: ${updatedCount}`);
-            switchTab('reportAll');
-        }
-
-        function downloadImporterExcel() {
-            if (importerExtractedRecords.length === 0) return;
-            const headers = ["Policy No", "Name of Assured", "Pin/Tm", "Mod", "Inst. Prem", "D.o.C.", "FUP"];
-            let csv = "\uFEFF" + headers.join(",") + "\n";
-            importerExtractedRecords.forEach(r => {
-                csv += `"${r.policyNo}","${r.nameOfAssured}","${r.pinTm}","${r.mod}","${r.instPrem}","${r.doc}","${r.fup}"\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `LIC_Premium_Due_${sampleParsedData.due_period.replace('/', '-')}.csv`;
-            link.click();
-        }
-
-        function downloadImporterPDF() {
-            if (importerExtractedRecords.length === 0) return;
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('landscape', 'mm', 'a4');
-            doc.setFontSize(16);
-            doc.setTextColor(26, 54, 93);
-            doc.text("LIC Premium Due Report", 14, 15);
-            doc.setFontSize(10);
-            doc.text(`Agent Name: ${sampleParsedData.agent_name} | Agent Code: ${sampleParsedData.agent_code} | Due: ${sampleParsedData.due_period}`, 14, 22);
-
-            const rows = importerExtractedRecords.map(r => [r.policyNo, r.nameOfAssured, r.pinTm, r.mod, r.instPrem, r.doc, r.fup]);
-            doc.autoTable({
-                head: [["Policy No", "Name of Assured", "Pin/Tm", "Mod", "Inst. Prem", "D.o.C.", "FUP"]],
-                body: rows,
-                startY: 28,
-                theme: 'grid',
-                headStyles: { fillColor: [43, 108, 176] }
-            });
-            doc.save(`LIC_Premium_Due_${sampleParsedData.due_period.replace('/', '-')}.pdf`);
-        }
-
-        function switchTab(tabId) {
+        // -------------------------------------------------------------
+        // View / Tab Switching
+        // -------------------------------------------------------------
+        window.switchTab = function(tabId) {
             document.getElementById('tabAutoImporter').classList.add('hidden');
             document.getElementById('tabAddPolicy').classList.add('hidden');
             document.getElementById('tabCheckDues').classList.add('hidden');
@@ -786,17 +646,177 @@
             } else if (tabId === 'reportAll') {
                 document.getElementById('tabReportAll').classList.remove('hidden');
                 document.getElementById('navReportAll').className = "py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition bg-blue-600 text-white shadow";
-                renderReportTable();
+                window.renderReportTable();
             } else if (tabId === 'calculationHistory') {
                 document.getElementById('tabCalculationHistory').classList.remove('hidden');
                 document.getElementById('navCalculationHistory').className = "col-span-2 sm:col-span-1 py-2.5 px-3 text-[11px] sm:text-xs font-bold rounded-xl transition bg-blue-600 text-white shadow";
-                renderHistoryTable();
+                window.renderHistoryTable();
             }
-        }
+        };
 
-        document.getElementById('addPolicyForm').addEventListener('submit', function(e) {
+        // -------------------------------------------------------------
+        // Auto Importer Engine
+        // -------------------------------------------------------------
+        window.processAutoImporterDocument = function() {
+            const matchDocDayOpt = document.getElementById('matchDocDayOpt').checked;
+            const metaDiv = document.getElementById('metaInfo');
+            const tbody = document.querySelector('#importerResultTable tbody');
+            
+            metaDiv.className = "text-xs font-bold text-amber-600 mb-4";
+            metaDiv.innerText = "Parsing document using AI extraction pipeline...";
+            tbody.innerHTML = "";
+            importerExtractedRecords = [];
+
+            setTimeout(() => {
+                const data = sampleParsedData;
+                metaDiv.className = "text-xs font-bold text-slate-700 mb-4";
+                metaDiv.innerHTML = `Branch Code: ${data.branch_code} | Agent Name: ${data.agent_name} | Agent Code: ${data.agent_code} | Due Period: ${data.due_period}`;
+
+                data.premium_due_list.forEach(item => {
+                    let formattedFup = item.fup;
+                    if (matchDocDayOpt && item.doc && item.doc.includes('/')) {
+                        const docParts = item.doc.split('/');
+                        const docDay = docParts[0];
+                        if (item.fup && item.fup.includes('/')) {
+                            const fupParts = item.fup.split('/');
+                            formattedFup = `${docDay}/${fupParts[0]}/${fupParts[1]}`;
+                        } else if (item.fup && item.fup.length <= 7) {
+                            formattedFup = `${docDay}/${item.fup}`;
+                        }
+                    }
+
+                    importerExtractedRecords.push({
+                        policyNo: item.policy_no,
+                        nameOfAssured: item.name_of_assured,
+                        doc: item.doc,
+                        pinTm: item.pin_tm,
+                        mod: item.mod,
+                        fup: formattedFup,
+                        flg: item.flg,
+                        instPrem: item.inst_prem,
+                        due: item.due,
+                        gst: item.gst,
+                        totPrem: item.tot_prem,
+                        estCom: item.est_com
+                    });
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3">${item.s_no}</td>
+                            <td class="p-3 font-bold text-slate-800">${item.policy_no}</td>
+                            <td class="p-3 font-semibold text-slate-700">${item.name_of_assured}</td>
+                            <td class="p-3">${item.doc}</td>
+                            <td class="p-3">${item.pin_tm}</td>
+                            <td class="p-3">${item.mod}</td>
+                            <td class="p-3 font-medium text-blue-700">${formattedFup}</td>
+                            <td class="p-3">${item.flg}</td>
+                            <td class="p-3 text-right">₹${item.inst_prem}</td>
+                            <td class="p-3">${item.due}</td>
+                            <td class="p-3">${item.gst}</td>
+                            <td class="p-3 text-right font-bold">₹${item.tot_prem}</td>
+                            <td class="p-3 text-right">₹${item.est_com}</td>
+                        </tr>
+                    `;
+                });
+
+                document.getElementById('updateDatabaseBtn').disabled = false;
+                document.getElementById('downloadExcelBtn').disabled = false;
+                document.getElementById('downloadPdfBtn').disabled = false;
+            }, 600);
+        };
+
+        window.updatePortalDatabaseFromImporter = async function() {
+            if (importerExtractedRecords.length === 0) {
+                alert("No records extracted to update.");
+                return;
+            }
+
+            let updatedCount = 0;
+            for (const rec of importerExtractedRecords) {
+                const policyNo = rec.policyNo;
+                let paymentMode = "Yearly";
+                const m = (rec.mod || '').toLowerCase();
+                if (m.includes('m')) paymentMode = "Monthly";
+                else if (m.includes('q')) paymentMode = "Quarterly";
+                else if (m.includes('h')) paymentMode = "Half Yearly";
+
+                let docDate = "NA";
+                if (rec.doc && rec.doc.includes('/')) {
+                    const p = rec.doc.split('/');
+                    if (p.length === 3) docDate = `${p[2]}-${p[1]}-${p[0]}`;
+                }
+
+                let fupDate = rec.fup || "NA";
+                if (fupDate.includes('/')) {
+                    const p = fupDate.split('/');
+                    if (p.length === 3) fupDate = `${p[2]}-${p[1]}-${p[0]}`;
+                    else if (p.length === 2) fupDate = `${p[1]}-${p[0]}-01`;
+                }
+
+                const policyRecord = {
+                    policyNo: policyNo,
+                    holderName: rec.nameOfAssured,
+                    licPlan: rec.pinTm,
+                    paymentMode: paymentMode,
+                    basePremium: parseFloat(rec.instPrem) || 0,
+                    docDate: docDate,
+                    fupDate: fupDate,
+                    dobDate: "NA",
+                    sumAssured: 0,
+                    mobileNo: "NA",
+                    emailId: "NA",
+                    address: "NA",
+                    nachStatus: "inactive"
+                };
+
+                await setDoc(doc(policiesColRef, policyNo), policyRecord, { merge: true });
+                updatedCount++;
+            }
+
+            alert(`Firestore Cloud Database Updated Successfully!\n• Synced ${updatedCount} Policy Records.`);
+            window.switchTab('reportAll');
+        };
+
+        window.downloadImporterExcel = function() {
+            if (importerExtractedRecords.length === 0) return;
+            const headers = ["Policy No", "Name of Assured", "Pin/Tm", "Mod", "Inst. Prem", "D.o.C.", "FUP"];
+            let csv = "\uFEFF" + headers.join(",") + "\n";
+            importerExtractedRecords.forEach(r => {
+                csv += `"${r.policyNo}","${r.nameOfAssured}","${r.pinTm}","${r.mod}","${r.instPrem}","${r.doc}","${r.fup}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `LIC_Premium_Due_${sampleParsedData.due_period.replace('/', '-')}.csv`;
+            link.click();
+        };
+
+        window.downloadImporterPDF = function() {
+            if (importerExtractedRecords.length === 0) return;
+            const { jsPDF } = window.jspdf;
+            const docPdf = new jsPDF('landscape', 'mm', 'a4');
+            docPdf.setFontSize(16);
+            docPdf.setTextColor(26, 54, 93);
+            docPdf.text("LIC Premium Due Report", 14, 15);
+            docPdf.setFontSize(10);
+            docPdf.text(`Agent Name: ${sampleParsedData.agent_name} | Agent Code: ${sampleParsedData.agent_code} | Due: ${sampleParsedData.due_period}`, 14, 22);
+
+            const rows = importerExtractedRecords.map(r => [r.policyNo, r.nameOfAssured, r.pinTm, r.mod, r.instPrem, r.doc, r.fup]);
+            docPdf.autoTable({
+                head: [["Policy No", "Name of Assured", "Pin/Tm", "Mod", "Inst. Prem", "D.o.C.", "FUP"]],
+                body: rows,
+                startY: 28,
+                theme: 'grid',
+                headStyles: { fillColor: [43, 108, 176] }
+            });
+            docPdf.save(`LIC_Premium_Due_${sampleParsedData.due_period.replace('/', '-')}.pdf`);
+        };
+
+        // -------------------------------------------------------------
+        // Cloud Policy Management (Add, Edit, Delete)
+        // -------------------------------------------------------------
+        document.getElementById('addPolicyForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const editIndex = document.getElementById('editPolicyIndex').value;
             const policyNoInput = document.getElementById('newPolicyNo').value.trim();
             
             const updatedPolicy = {
@@ -815,27 +835,18 @@
                 nachStatus: document.getElementById('newNachYes').checked ? 'active' : 'inactive'
             };
 
-            const existingIndex = policies.findIndex(p => p.policyNo === policyNoInput);
-
-            if (editIndex !== "") {
-                policies[parseInt(editIndex)] = updatedPolicy;
-                alert('Policy record updated successfully!');
-            } else {
-                if (existingIndex !== -1) {
-                    policies[existingIndex] = updatedPolicy;
-                    alert(`Duplicate Policy Number "${policyNoInput}" detected! Previous data has been successfully updated.`);
-                } else {
-                    policies.push(updatedPolicy);
-                    alert('Policy successfully added to database!');
-                }
+            try {
+                await setDoc(doc(policiesColRef, policyNoInput), updatedPolicy);
+                alert(`Policy Record #${policyNoInput} saved directly to Firebase Firestore!`);
+                window.resetFormToAddNew();
+                window.switchTab('reportAll');
+            } catch (err) {
+                console.error("Firestore Policy Save Error:", err);
+                alert("Could not save to Firebase: " + err.message);
             }
-
-            savePolicies();
-            resetFormToAddNew();
-            switchTab('reportAll');
         });
 
-        function editPolicy(index) {
+        window.editPolicy = function(index) {
             const p = policies[index];
             if (!p) return;
 
@@ -857,28 +868,41 @@
             else document.getElementById('newNachNo').checked = true;
 
             document.getElementById('formTitleHeading').innerText = `Edit Policy Record: ${p.policyNo}`;
-            document.getElementById('formModeBadge').innerText = `Updating Record #${parseInt(index)+1}`;
+            document.getElementById('formModeBadge').innerText = `Editing Cloud Document`;
             document.getElementById('savePolicyBtn').innerText = 'Update Policy Record';
             document.getElementById('cancelEditBtn').classList.remove('hidden');
 
-            switchTab('addPolicy');
-        }
+            window.switchTab('addPolicy');
+        };
 
-        function resetFormToAddNew() {
+        window.deletePolicy = async function(policyNo) {
+            if (confirm(`Are you sure you want to delete Policy No: ${policyNo} from Firestore?`)) {
+                try {
+                    await deleteDoc(doc(policiesColRef, policyNo));
+                } catch (err) {
+                    alert("Delete failed: " + err.message);
+                }
+            }
+        };
+
+        window.resetFormToAddNew = function() {
             document.getElementById('addPolicyForm').reset();
             document.getElementById('editPolicyIndex').value = '';
             document.getElementById('newSumAssured').value = '0';
             document.getElementById('formTitleHeading').innerText = 'Add New Policy Record';
-            document.getElementById('formModeBadge').innerText = 'Database Entry';
+            document.getElementById('formModeBadge').innerText = 'Cloud Entry';
             document.getElementById('savePolicyBtn').innerText = 'Save Policy Record';
             document.getElementById('cancelEditBtn').classList.add('hidden');
-        }
+        };
 
-        function filterPolicyDropdown() {
-            const query = document.getElementById('policySearchInput').value.toLowerCase().trim();
+        // -------------------------------------------------------------
+        // Search & Calculation
+        // -------------------------------------------------------------
+        window.filterPolicyDropdown = function() {
+            const queryStr = document.getElementById('policySearchInput').value.toLowerCase().trim();
             const dropdown = document.getElementById('policyDropdownList');
-            if (!query) { dropdown.classList.add('hidden'); return; }
-            const filtered = policies.filter(p => p.policyNo.toLowerCase().includes(query) || p.holderName.toLowerCase().includes(query));
+            if (!queryStr) { dropdown.classList.add('hidden'); return; }
+            const filtered = policies.filter(p => p.policyNo.toLowerCase().includes(queryStr) || p.holderName.toLowerCase().includes(queryStr));
             if (filtered.length === 0) {
                 dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400">No matching policies found</div>`;
             } else {
@@ -890,12 +914,9 @@
                 `).join('');
             }
             dropdown.classList.remove('hidden');
-        }
+        };
 
-        let selectedPolicy = null;
-        let currentShareText = "";
-
-        function selectPolicy(policyNo) {
+        window.selectPolicy = function(policyNo) {
             selectedPolicy = policies.find(p => p.policyNo === policyNo);
             if (!selectedPolicy) return;
 
@@ -918,9 +939,9 @@
                 document.getElementById('calcFupDate').value = selectedPolicy.docDate;
             }
             document.getElementById('calcRevivalDate').value = new Date().toISOString().split('T')[0];
-        }
+        };
 
-        function resetCheckDuesSearch() {
+        window.resetCheckDuesSearch = function() {
             selectedPolicy = null;
             document.getElementById('policySearchInput').value = '';
             document.getElementById('selectedPolicyCard').classList.add('hidden');
@@ -928,65 +949,53 @@
             document.getElementById('calcFupDate').value = '';
             document.getElementById('calcRevivalDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('policySearchInput').focus();
-        }
+        };
 
-        function useRecordedFup() {
+        window.useRecordedFup = function() {
             if (!selectedPolicy) { alert('Please select a policy first.'); return; }
             if (selectedPolicy.fupDate && selectedPolicy.fupDate !== 'NA') {
                 document.getElementById('calcFupDate').value = selectedPolicy.fupDate;
             } else if (selectedPolicy.docDate) {
                 document.getElementById('calcFupDate').value = selectedPolicy.docDate;
             }
-        }
+        };
 
-        function useCurrentDate() {
+        window.useCurrentDate = function() {
             document.getElementById('calcRevivalDate').value = new Date().toISOString().split('T')[0];
-        }
+        };
 
         function triggerWhatsAppShare(mobileNo, message) {
             let cleanPhone = (mobileNo || "").replace(/\D/g, '');
-            if (cleanPhone.length === 10) {
-                cleanPhone = "91" + cleanPhone;
-            }
+            if (cleanPhone.length === 10) cleanPhone = "91" + cleanPhone;
             if (cleanPhone.length >= 11) {
                 const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
                 window.open(whatsappUrl, '_blank');
             } else {
                 if (navigator.share) {
-                    navigator.share({
-                        title: 'Premium Dues',
-                        text: message
-                    }).catch(err => console.log('Error sharing:', err));
+                    navigator.share({ title: 'Premium Dues', text: message }).catch(err => console.log('Error:', err));
                 } else {
                     navigator.clipboard.writeText(message).then(() => {
-                        alert('Policyholder number not available or invalid. Summary copied to clipboard!');
-                    }).catch(() => {
-                        prompt("Copy summary:", message);
-                    });
+                        alert('Summary copied to clipboard!');
+                    }).catch(() => prompt("Copy summary:", message));
                 }
             }
         }
 
-        function shareCalculationSummary() {
-            if (!currentShareText) {
-                alert("Please calculate dues first to share the summary.");
-                return;
-            }
+        window.shareCalculationSummary = function() {
+            if (!currentShareText) { alert("Please calculate dues first."); return; }
             const phone = selectedPolicy ? selectedPolicy.mobileNo : "";
             triggerWhatsAppShare(phone, currentShareText);
-        }
+        };
 
-        function shareHistoryItem(index) {
+        window.shareHistoryItem = function(index) {
             const h = calculationHistory[index];
             if (!h) return;
-            const historyShareText = `📋 *Premium Dues*\n\n• Calc Date / FUP: ${h.calcDate} / ${h.fupDate}\n• Policy No / Holder: ${h.policyNo} / ${h.holderName}\n• Status: ${h.statusText}\n• Total Payable: ₹${h.totalPayable.toFixed(2)}\n\n👤 Tarkeshwar Yadav (Senior Insurance Advisor)`;
-            
-            const matchedPolicy = policies.find(p => p.policyNo === h.policyNo);
-            const phone = matchedPolicy ? matchedPolicy.mobileNo : "";
-            triggerWhatsAppShare(phone, historyShareText);
-        }
+            const text = `📋 *Premium Dues*\n\n• Calc Date / FUP: ${h.calcDate} / ${h.fupDate}\n• Policy No / Holder: ${h.policyNo} / ${h.holderName}\n• Status: ${h.statusText}\n• Total Payable: ₹${h.totalPayable.toFixed(2)}\n\n👤 Tarkeshwar Yadav (Senior Insurance Advisor)`;
+            const matched = policies.find(p => p.policyNo === h.policyNo);
+            triggerWhatsAppShare(matched ? matched.mobileNo : "", text);
+        };
 
-        document.getElementById('checkDuesForm').addEventListener('submit', function(e) {
+        document.getElementById('checkDuesForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (!selectedPolicy) { alert('Please search and select a policy first.'); return; }
             
@@ -1000,7 +1009,7 @@
             const formattedRevival = formatDateDDMMYYYY(revivalDateStr);
 
             const diffTime = revivalDate - fupDate;
-            const totalDaysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            const totalDaysOverdue = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
 
             let gracePeriodDays = (selectedPolicy.paymentMode === "Monthly") ? 15 : 30;
             let intervalDays = 365;
@@ -1014,7 +1023,7 @@
             let interest = 0;
             let statusText = "";
             let badgeClass = "";
-            const interestRate = 9.5; // standard p.a.
+            const interestRate = 9.5;
             let taxableDays = 0;
 
             if (totalDaysOverdue <= gracePeriodDays) {
@@ -1024,10 +1033,7 @@
             } else {
                 statusText = "Late Fee Applicable";
                 badgeClass = "bg-rose-100 text-rose-800 border border-rose-200";
-                // If grace period is over, count grace period days into the total difference days between revival date and FUP date
                 taxableDays = totalDaysOverdue;
-                
-                // Using formula: Interest = [Premium Amount * (Interest Rate / 100) * (Taxable Days / 365)] + 5
                 interest = (totalBasePremium * (interestRate / 100) * (taxableDays / 365)) + 5;
             }
 
@@ -1036,9 +1042,10 @@
             else document.getElementById('nachRow').classList.add('hidden');
 
             const totalPayable = totalBasePremium + interest + nachCharge;
-            const formattedCurrentDate = new Date().toISOString().slice(0, 10).split('-').reverse().join('-');
 
-            calculationHistory.unshift({
+            const historyDocId = `${selectedPolicy.policyNo}_${Date.now()}`;
+            const historyData = {
+                timestamp: Date.now(),
                 calcDate: formattedRevival,
                 policyNo: selectedPolicy.policyNo,
                 holderName: selectedPolicy.holderName,
@@ -1051,8 +1058,13 @@
                 interest: interest,
                 nachCharge: nachCharge,
                 installmentsCount: numberOfInstallments
-            });
-            saveHistory();
+            };
+
+            try {
+                await setDoc(doc(historyColRef, historyDocId), historyData);
+            } catch (err) {
+                console.error("History Log Error:", err);
+            }
 
             document.getElementById('currentPrintDate').innerText = formattedRevival;
             document.getElementById('resPolicyInfo').innerText = `${selectedPolicy.policyNo} (${selectedPolicy.holderName})`;
@@ -1075,14 +1087,19 @@
             document.getElementById('resultSection').classList.remove('hidden');
         });
 
-        function renderReportTable() {
-            const query = document.getElementById('reportSearchBox')?.value.toLowerCase().trim() || "";
+        // -------------------------------------------------------------
+        // Dynamic Table Renderers
+        // -------------------------------------------------------------
+        window.renderReportTable = function() {
+            const queryStr = document.getElementById('reportSearchBox')?.value.toLowerCase().trim() || "";
             const tbody = document.getElementById('reportTableBody');
-            const filtered = policies.map((p, originalIndex) => ({ ...p, originalIndex })).filter(p => p.policyNo.toLowerCase().includes(query) || p.holderName.toLowerCase().includes(query) || p.licPlan.toLowerCase().includes(query));
+            if (!tbody) return;
+
+            const filtered = policies.map((p, originalIndex) => ({ ...p, originalIndex })).filter(p => p.policyNo.toLowerCase().includes(queryStr) || p.holderName.toLowerCase().includes(queryStr) || p.licPlan.toLowerCase().includes(queryStr));
             document.getElementById('policyCountBadge').innerText = `${policies.length} Policies`;
 
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">No records found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400 text-xs">No policy records found in Firestore</td></tr>`;
                 return;
             }
 
@@ -1097,16 +1114,18 @@
                         <button onclick="printIndividualRecord(${p.originalIndex})" class="text-indigo-600 font-bold">Print</button>
                         <button onclick="switchTab('checkDues'); selectPolicy('${p.policyNo}');" class="text-blue-600 font-semibold">Dues</button>
                         <button onclick="editPolicy(${p.originalIndex})" class="text-amber-600">Edit</button>
-                        <button onclick="policies.splice(${p.originalIndex},1); savePolicies(); renderReportTable();" class="text-rose-500">Del</button>
+                        <button onclick="deletePolicy('${p.policyNo}')" class="text-rose-500">Del</button>
                     </td>
                 </tr>
             `).join('');
-        }
+        };
 
-        function renderHistoryTable() {
-            const query = document.getElementById('historySearchBox')?.value.toLowerCase().trim() || "";
+        window.renderHistoryTable = function() {
+            const queryStr = document.getElementById('historySearchBox')?.value.toLowerCase().trim() || "";
             const tbody = document.getElementById('historyTableBody');
-            const filtered = calculationHistory.map((h, originalIndex) => ({ ...h, originalIndex })).filter(h => h.policyNo.toLowerCase().includes(query) || h.holderName.toLowerCase().includes(query));
+            if (!tbody) return;
+
+            const filtered = calculationHistory.map((h, originalIndex) => ({ ...h, originalIndex })).filter(h => h.policyNo.toLowerCase().includes(queryStr) || h.holderName.toLowerCase().includes(queryStr));
             document.getElementById('historyCountBadge').innerText = `${calculationHistory.length} Records`;
 
             if (filtered.length === 0) {
@@ -1121,21 +1140,31 @@
                     <td class="p-3 text-right font-bold text-blue-900">₹${h.totalPayable.toFixed(2)}</td>
                     <td class="p-3 text-center space-x-2 whitespace-nowrap">
                         <button onclick="shareHistoryItem(${h.originalIndex})" class="text-indigo-600 font-semibold">Share</button>
-                        <button onclick="calculationHistory.splice(${h.originalIndex}, 1); saveHistory(); renderHistoryTable();" class="text-rose-500">Del</button>
+                        <button onclick="deleteHistoryDoc('${h.id}')" class="text-rose-500">Del</button>
                     </td>
                 </tr>
             `).join('');
-        }
+        };
 
-        function clearCalculationHistory() {
-            if (confirm("Are you sure you want to clear all calculation history?")) {
-                calculationHistory = [];
-                saveHistory();
-                renderHistoryTable();
+        window.deleteHistoryDoc = async function(docId) {
+            if (confirm("Delete this history record from Firestore?")) {
+                try {
+                    await deleteDoc(doc(historyColRef, docId));
+                } catch (err) {
+                    alert("Delete failed: " + err.message);
+                }
             }
-        }
+        };
 
-        function printIndividualRecord(index) {
+        window.clearCalculationHistory = async function() {
+            if (confirm("Are you sure you want to clear ALL calculation history from Firebase Cloud?")) {
+                for (const item of calculationHistory) {
+                    if (item.id) await deleteDoc(doc(historyColRef, item.id));
+                }
+            }
+        };
+
+        window.printIndividualRecord = function(index) {
             const p = policies[index];
             if (!p) return;
             const content = document.getElementById('printModalContent');
@@ -1157,63 +1186,58 @@
             `;
             document.querySelector('main > div').classList.add('hidden');
             document.getElementById('individualPrintModal').classList.remove('hidden');
-        }
+        };
 
-        function closeIndividualPrint() {
+        window.closeIndividualPrint = function() {
             document.getElementById('individualPrintModal').classList.add('hidden');
             document.querySelector('main > div').classList.remove('hidden');
-        }
+        };
 
-        function backupDatabase() {
+        window.backupDatabase = function() {
             const backupObj = { policies, calculationHistory };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupObj, null, 2));
             const dlAnchorElem = document.createElement('a');
             dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", `LIC_Portal_Backup_${new Date().toISOString().slice(0,10)}.json`);
+            dlAnchorElem.setAttribute("download", `LIC_Portal_Cloud_Backup_${new Date().toISOString().slice(0,10)}.json`);
             dlAnchorElem.click();
-        }
+        };
 
-        function restoreDatabase(event) {
+        window.restoreDatabase = function(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const parsed = JSON.parse(e.target.result);
                     if (parsed.policies && Array.isArray(parsed.policies)) {
-                        policies = parsed.policies;
-                        savePolicies();
+                        for (const p of parsed.policies) {
+                            if (p.policyNo) await setDoc(doc(policiesColRef, p.policyNo), p, { merge: true });
+                        }
                     }
-                    if (parsed.calculationHistory && Array.isArray(parsed.calculationHistory)) {
-                        calculationHistory = parsed.calculationHistory;
-                        saveHistory();
-                    }
-                    alert('Database restored successfully!');
-                    renderReportTable();
-                    switchTab('reportAll');
+                    alert('Backup restored into Cloud Firestore successfully!');
                 } catch (err) {
-                    alert('Invalid backup file format.');
+                    alert('Invalid backup JSON format.');
                 }
             };
             reader.readAsText(file);
-        }
+        };
 
-        function downloadExcelTemplate() {
+        window.downloadExcelTemplate = function() {
             const wb = XLSX.utils.book_new();
             const wsData = [
                 ["Policy No", "Holder Name", "DOB", "Plan", "Payment Mode", "Base Premium", "Sum Assured", "DOC", "FUP", "Mobile", "Email", "Address", "NACH Status"],
-                ["384920192", "Ramesh Kumar", "1988-05-12", "914/21", "Yearly", 12500, 500000, "2020-04-15", "2025-04-15", "9876543210", "ramesh@example.com", "Varanasi, UP", "inactive"]
+                ["567909400", "SUNIL KUMAR KUSHWAHA", "NA", "714/21", "Monthly", 882, 0, "2026-03-05", "2026-04-05", "NA", "NA", "NA", "inactive"]
             ];
             const ws = XLSX.utils.aoa_to_sheet(wsData);
             XLSX.utils.book_append_sheet(wb, ws, "Policies Template");
             XLSX.writeFile(wb, "LIC_Policies_Template.xlsx");
-        }
+        };
 
-        function importExcelFile(e) {
+        window.importExcelFile = function(e) {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(evt) {
+            reader.onload = async function(evt) {
                 try {
                     const data = new Uint8Array(evt.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
@@ -1231,7 +1255,7 @@
                         const policyNo = String(row[0]).trim();
                         const holderName = String(row[1] || 'Unknown').trim();
                         const dobDate = parseExcelDate(row[2]) || 'NA';
-                        const licPlan = String(row[3] || '914/21').trim();
+                        const licPlan = String(row[3] || '714/21').trim();
                         const paymentMode = String(row[4] || 'Yearly').trim();
                         const basePremium = parseFloat(row[5]) || 0;
                         const sumAssured = parseFloat(row[6]) || 0;
@@ -1242,32 +1266,29 @@
                         const address = String(row[11] || 'NA').trim();
                         const nachStatus = String(row[12] || 'inactive').trim().toLowerCase();
 
-                        const existingIdx = policies.findIndex(p => p.policyNo === policyNo);
                         const policyObj = { policyNo, holderName, dobDate, licPlan, paymentMode, basePremium, sumAssured, docDate, fupDate, mobileNo, emailId, address, nachStatus };
-
-                        if (existingIdx !== -1) {
-                            policies[existingIdx] = policyObj;
-                        } else {
-                            policies.push(policyObj);
-                        }
+                        await setDoc(doc(policiesColRef, policyNo), policyObj, { merge: true });
                         importedCount++;
                     }
-                    savePolicies();
-                    renderReportTable();
-                    alert(`Successfully imported/updated ${importedCount} policies from Excel!`);
-                    switchTab('reportAll');
+                    alert(`Uploaded ${importedCount} policies directly to Firebase Firestore!`);
+                    window.switchTab('reportAll');
                 } catch (err) {
-                    alert('Error parsing Excel file: ' + err.message);
+                    alert('Error parsing Excel: ' + err.message);
                 }
             };
             reader.readAsArrayBuffer(file);
             e.target.value = '';
-        }
+        };
 
-        function importPdfFile(e) {
-            alert('Please use the "0. Due Auto-Importer" tab to extract and import LIC Premium Due lists from PDF or image files.');
+        window.importPdfFile = function(e) {
+            alert('Please use the "0. Due Auto-Importer" tab to extract and import LIC Premium Due lists.');
             e.target.value = '';
-        }
+        };
+
+        // Bootstrap Firestore Subscriptions on Page Load
+        document.addEventListener('DOMContentLoaded', () => {
+            initFirestoreListeners();
+        });
     </script>
 </body>
 </html>
